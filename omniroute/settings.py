@@ -8,6 +8,8 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-omniroute-change-in
 
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 _raw_hosts = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver,.onrender.com')
 ALLOWED_HOSTS = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
 
@@ -15,7 +17,20 @@ _raw_cors = os.getenv('CORS_ALLOWED_ORIGINS', '')
 CORS_ALLOWED_ORIGINS = [u.strip() for u in _raw_cors.split(',') if u.strip()] if _raw_cors else []
 
 _raw_csrf = os.getenv('CSRF_TRUSTED_ORIGINS', '')
-CSRF_TRUSTED_ORIGINS = [u.strip() for u in _raw_csrf.split(',') if u.strip()] if _raw_csrf else []
+if _raw_csrf:
+    CSRF_TRUSTED_ORIGINS = [u.strip() for u in _raw_csrf.split(',') if u.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com', 'http://localhost:8000', 'http://127.0.0.1:8000']
+
+for host in ALLOWED_HOSTS:
+    if host not in ('*', 'localhost', '127.0.0.1', 'testserver'):
+        clean_host = host.lstrip('.')
+        https_origin = f'https://{clean_host}'
+        https_wildcard = f'https://*.{clean_host}'
+        if https_origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(https_origin)
+        if https_wildcard not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(https_wildcard)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
