@@ -1,0 +1,164 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block content %}
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center min-vh-100">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold">Connect with Random People Instantly</h1>
+                <p class="lead">OmniRoute is the modern way to meet new people, share ideas, and have meaningful conversations in a safe, secure environment.</p>
+                <div class="d-grid gap-2 d-md-flex">
+                    <a href="{% url 'accounts:register' %}" class="btn btn-light btn-lg">Get Started Free</a>
+                    <a href="{% url 'accounts:guest-login' %}" class="btn btn-outline-light btn-lg">Try as Guest</a>
+                </div>
+                <div class="mt-4">
+                    <span class="text-white-50"><i class="bi bi-people-fill"></i> 50K+ Users</span>
+                    <span class="text-white-50 ms-4"><i class="bi bi-chat-dots-fill"></i> 1M+ Messages</span>
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <div class="display-1">💬</div>
+                <p class="text-white-50">Connect instantly</p>
+            </div>
+        </div>
+    </div>
+</section>
+<section id="features" class="py-5 bg-dark">
+    <div class="container">
+        <h2 class="text-center mb-5">Why OmniRoute?</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow">
+                    <div class="card-body text-center">
+                        <div class="display-4 mb-3">🎯</div>
+                        <h5>Smart Matching</h5>
+                        <p>Find people who share your interests, language, and preferences with our intelligent matching system.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow">
+                    <div class="card-body text-center">
+                        <div class="display-4 mb-3">💬</div>
+                        <h5>Real-time Chat</h5>
+                        <p>Instant messaging with typing indicators, seen status, and smooth auto-reconnect.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow">
+                    <div class="card-body text-center">
+                        <div class="display-4 mb-3">🔒</div>
+                        <h5>Safe & Secure</h5>
+                        <p>Block, report, and filter inappropriate content. Your safety is our priority.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<section id="how-it-works" class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">How It Works</h2>
+        <div class="row g-4">
+            <div class="col-md-4 text-center">
+                <div class="display-1 fw-bold text-primary">1</div>
+                <h4>Create Profile</h4>
+                <p>Sign up or use guest mode. Add your interests, languages, and preferences to get better matches.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="display-1 fw-bold text-primary">2</div>
+                <h4>Start Searching</h4>
+                <p>Choose your matching preferences and click search. Our engine finds the best matches for you.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="display-1 fw-bold text-primary">3</div>
+                <h4>Chat & Connect</h4>
+                <p>Once matched, start chatting instantly in a beautifully designed, real-time chat interface.</p>
+            </div>
+        </div>
+    </div>
+</section>
+<section id="testimonials" class="py-5 bg-dark">
+    <div class="container">
+        <h2 class="text-center mb-5">What Users Say</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card border-0 shadow">
+                    <div class="card-body">
+                        <p class="card-text">"Finally, a chat app that's actually modern and safe. Met some amazing people here!"</p>
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:40px;height:40px;">A</div>
+                            <div class="ms-3"><strong>Alex</strong><br><small class="text-muted">Student</small></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow">
+                    <div class="card-body">
+                        <p class="card-text">"The matching system is incredible. Found people who genuinely share my interests."</p>
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width:40px;height:40px;">S</div>
+                            <div class="ms-3"><strong>Sarah</strong><br><small class="text-muted">Designer</small></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow">
+                    <div class="card-body">
+                        <p class="card-text">"Love the dark mode and the clean interface. Refreshing compared to old chat apps."</p>
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" style="width:40px;height:40px;">M</div>
+                            <div class="ms-3"><strong>Mike</strong><br><small class="text-muted">Developer</small></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<section id="faq" class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Frequently Asked Questions</h2>
+        <div class="accordion" id="faqAccordion">
+            <div class="accordion-item">
+                <h3 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">Is OmniRoute free?</button></h3>
+                <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion"><div class="accordion-body">Yes, OmniRoute is completely free to use.</div></div>
+            </div>
+            <div class="accordion-item">
+                <h3 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">Do I need to register?</button></h3>
+                <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">No, you can use guest mode to start chatting immediately.</div></div>
+            </div>
+            <div class="accordion-item">
+                <h3 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">Is my data safe?</button></h3>
+                <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Yes, we use industry-standard security and you can delete your account anytime.</div></div>
+            </div>
+        </div>
+    </div>
+</section>
+<footer class="bg-dark text-white py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <h5>OmniRoute</h5>
+                <p class="text-white-50">Connecting people through meaningful conversations.</p>
+            </div>
+            <div class="col-md-4">
+                <h5>Quick Links</h5>
+                <ul class="list-unstyled">
+                    <li><a href="{% url 'accounts:register' %}" class="text-white-50">Register</a></li>
+                    <li><a href="{% url 'core:search' %}" class="text-white-50">Start Chatting</a></li>
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <h5>Contact</h5>
+                <p class="text-white-50">support@omniroute.app</p>
+            </div>
+        </div>
+        <hr class="my-4">
+        <p class="text-center text-white-50 mb-0"> OmniRoute. All rights reserved.</p>
+    </div>
+</footer>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block content %}
+<div class="container-fluid" data-page="dashboard">
+    <div class="row">
+        <div class="col-md-2 sidebar p-0">
+            <div class="p-3">
+                <h5 class="mb-4">Menu</h5>
+                <div class="nav flex-column">
+                    <a href="{% url 'core:dashboard' %}" class="nav-link active">Dashboard</a>
+                    <a href="{% url 'core:search' %}" class="nav-link">Search Chat</a>
+                    <a href="{% url 'accounts:profile' %}" class="nav-link">Profile</a>
+                    <a href="{% url 'friends:friends_list' %}" class="nav-link">Friends</a>
+                    <a href="{% url 'notifications:notifications' %}" class="nav-link">Notifications</a>
+                    <a href="{% url 'core:settings' %}" class="nav-link">Settings</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-10 p-4">
+            <h2 class="mb-4">Dashboard</h2>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h5>Profile Completion</h5>
+                            <p class="display-6">{{ profile.profile_completion }}%</p>
+                            <div class="profile-completion">
+                                <div class="profile-completion-bar" style="width: {{ profile.profile_completion }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h5>Online Friends</h5>
+                            <p class="display-6" id="stat-friends">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body">
+                            <h5>Total Chats</h5>
+                            <p class="display-6" id="stat-chats">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5>Recent Chats</h5>
+                            <div id="recentChats">
+                                <p class="text-muted">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5>Friends Online</h5>
+                            <div id="friendsList">
+                                <p class="text-muted">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4">
+                <a href="{% url 'core:search' %}" class="btn btn-primary btn-lg w-100">Start Chatting Now</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

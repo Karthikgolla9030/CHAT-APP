@@ -1,0 +1,846 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block title %}Matched with Alex Johnson | OmniRoute{% endblock %}
+
+{% block extra_css %}
+<style>
+:root {
+    --bg-dark: #0f172a;
+    --bg-card: #1e293b;
+    --bg-glass: rgba(30, 41, 59, 0.85);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border-color: #334155;
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --accent: #ec4899;
+}
+
+.match-wrapper {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.match-container {
+    display: grid;
+    grid-template-columns: 320px 280px 1fr;
+    gap: 20px;
+    max-width: 1200px;
+    width: 100%;
+    height: calc(100vh - 40px);
+    min-height: 600px;
+}
+
+/* Profile Card - Left */
+.profile-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    overflow-y: auto;
+}
+
+.profile-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 16px;
+    position: relative;
+    box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
+}
+
+.online-indicator {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 20px;
+    height: 20px;
+    background: var(--success);
+    border-radius: 50%;
+    border: 3px solid var(--bg-card);
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+}
+
+.profile-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.profile-age {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+}
+
+.profile-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.profile-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(99, 102, 241, 0.08);
+    border-radius: 12px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.profile-meta-item .icon {
+    font-size: 1.1rem;
+    width: 20px;
+    text-align: center;
+}
+
+.profile-bio {
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    padding: 14px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+    width: 100%;
+    text-align: left;
+}
+
+.rating-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.stars {
+    color: var(--warning);
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+}
+
+.rating-value {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+/* Match Details - Middle */
+.match-details {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    overflow-y: auto;
+}
+
+.match-score-section {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.match-percentage {
+    font-size: 3.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.match-label {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.match-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+    margin: 4px 0;
+}
+
+.reasons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.reason-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    border-radius: 12px;
+    font-size: 0.9rem;
+    color: var(--success);
+}
+
+.reason-icon {
+    font-size: 1rem;
+}
+
+.interests-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.section-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.interest-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.interest-tag {
+    padding: 6px 14px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(236, 72, 153, 0.2));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 20px;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.interest-tag:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(236, 72, 153, 0.3));
+    transform: translateY(-1px);
+}
+
+.conversation-starters {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.starter-item {
+    padding: 10px 14px;
+    background: rgba(99, 102, 241, 0.08);
+    border-left: 3px solid var(--primary);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.starter-item:hover {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--text-primary);
+    transform: translateX(4px);
+}
+
+/* Chat Section - Right */
+.chat-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+.chat-header {
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(10px);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.chat-header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chat-header-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+}
+
+.chat-header-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    font-size: 1rem;
+}
+
+.chat-header-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--success);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Common Interests below header */
+.chat-interests-bar {
+    background: rgba(99, 102, 241, 0.05);
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow-x: auto;
+}
+
+.interests-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.chat-interest-tag {
+    padding: 4px 12px;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 14px;
+    font-size: 0.75rem;
+    color: var(--primary);
+    white-space: nowrap;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--bg-dark);
+}
+
+.message-row {
+    display: flex;
+    gap: 10px;
+    max-width: 80%;
+}
+
+.message-row.sent {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: white;
+    flex-shrink: 0;
+}
+
+.message-bubble {
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    position: relative;
+}
+
+.message-row.sent .message-bubble {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.message-row.received .message-bubble {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-bottom-left-radius: 4px;
+}
+
+.message-meta {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    margin-top: 4px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.typing-indicator {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    display: none;
+}
+
+.typing-indicator.active {
+    display: block;
+}
+
+.chat-input-area {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+    padding: 12px 16px;
+}
+
+.chat-input-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.chat-input {
+    flex: 1;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 24px;
+    padding: 10px 18px;
+    font-size: 0.92rem;
+}
+
+.chat-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.chat-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+}
+
+.chat-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.chat-send-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    color: white;
+}
+
+.chat-send-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+/* Bottom Action Bar */
+.action-bar {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+    padding: 12px 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, var(--success), #16a34a);
+    border-color: var(--success);
+    color: white;
+}
+
+.action-btn.warning {
+    background: linear-gradient(135deg, var(--warning), #d97706);
+    border-color: var(--warning);
+    color: white;
+}
+
+.action-btn.danger {
+    background: linear-gradient(135deg, var(--danger), #dc2626);
+    border-color: var(--danger);
+    color: white;
+}
+
+.action-btn.skipped {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+@media (max-width: 992px) {
+    .match-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+        height: auto;
+        min-height: 100vh;
+    }
+    
+    .profile-card, .match-details {
+        max-height: 400px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="match-wrapper">
+    <div class="match-container">
+        <!-- Left: Profile Card -->
+        <div class="profile-card">
+            <div class="profile-avatar">
+                AJ
+                <div class="online-indicator"></div>
+            </div>
+            
+            <h2 class="profile-name">Alex Johnson</h2>
+            <p class="profile-age">Age: 26</p>
+            
+            <div class="profile-meta">
+                <div class="profile-meta-item">
+                    <span class="icon">📍</span>
+                    <span>Bangalore, India</span>
+                </div>
+                <div class="profile-meta-item">
+                    <span class="icon">⭐</span>
+                    <span>4.8 Rating</span>
+                </div>
+                <div class="profile-meta-item">
+                    <span class="icon">💼</span>
+                    <span>Frontend Developer</span>
+                </div>
+            </div>
+            
+            <p class="profile-bio">
+                Passionate about React, UI/UX, and Open Source. Love building real-world projects and learning new technologies. Always excited to connect with fellow developers!
+            </p>
+            
+            <div class="rating-container">
+                <div class="stars">★★★★★</div>
+                <span class="rating-value">4.8</span>
+            </div>
+        </div>
+
+        <!-- Middle: Match Details -->
+        <div class="match-dDetails">
+            <div class="match-score-section">
+                <div class="match-percentage">92%</div>
+                <div class="match-label">Match Score</div>
+            </div>
+            
+            <div class="match-divider"></div>
+            
+            <div class="reasons-list">
+                <div class="reason-item">
+                    <span class="reason-icon">✔</span>
+                    <span>Looking for Male</span>
+                </div>
+                <div class="reason-item">
+                    <span class="reason-icon">✔</span>
+                    <span>Same Location</span>
+                </div>
+                <div class="reason-item">
+                    <span class="reason-icon">✔</span>
+                    <span>5 Common Interests</span>
+                </div>
+                <div class="reason-item">
+                    <span class="reason-icon">✔</span>
+                    <span>Similar Match Preference</span>
+                </div>
+            </div>
+            
+            <div class="match-divider"></div>
+            
+            <div class="interests-section">
+                <div class="section-title">Common Interests</div>
+                <div class="interest-tags">
+                    <span class="interest-tag">Python</span>
+                    <span class="interest-tag">React</span>
+                    <span class="interest-tag">AI</span>
+                    <span class="interest-tag">Open Source</span>
+                    <span class="interest-tag">Gaming</span>
+                </div>
+            </div>
+            
+            <div class="match-divider"></div>
+            
+            <div class="conversation-starters">
+                <div class="section-title">Need help starting?</div>
+                <div class="starter-item" onclick="useStarter('Hey! I noticed we both like Python. What\'s your favorite project?')">
+                    Ask about their latest project
+                </div>
+                <div class="starter-item" onclick="useStarter('I see you\'re into AI too! What are your favorite AI tools?')">
+                    Discuss your favorite AI tools
+                </div>
+                <div class="starter-item" onclick="useStarter('React or Vue? Which one do you prefer and why?')">
+                    Talk about Python libraries
+                </div>
+                <div class="starter-item" onclick="useStarter('What made you interested in frontend development?')">
+                    Share your learning goals
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Chat Section -->
+        <div class="chat-section">
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <div class="chat-header-avatar">AJ</div>
+                    <div>
+                        <div class="chat-header-name">Alex Johnson</div>
+                        <div class="chat-header-status">
+                            <div class="status-dot"></div>
+                            Online
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-interests-bar">
+                <span class="interests-label">✨ You both like</span>
+                <span class="chat-interest-tag">Python</span>
+                <span class="chat-interest-tag">React</span>
+                <span class="chat-interest-tag">AI</span>
+                <span class="chat-interest-tag">Open Source</span>
+                <span class="chat-interest-tag">Gaming</span>
+            </div>
+            
+            <div class="chat-messages" id="messages">
+                <div class="message-row received">
+                    <div class="message-avatar">AJ</div>
+                    <div>
+                        <div class="message-bubble">
+                            Hey 👋 Nice to meet you!
+                            <div class="message-meta">2:30 PM • ✓✓</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="message-row sent">
+                    <div class="message-avatar">You</div>
+                    <div>
+                        <div class="message-bubble">
+                            Hi! Yes 😄 I'm currently learning Django.
+                            <div class="message-meta">2:31 PM • ✓✓</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="message-row received">
+                    <div class="message-avatar">AJ</div>
+                    <div>
+                        <div class="message-bubble">
+                            That's awesome. I can help with Django.
+                            <div class="message-meta">2:32 PM • ✓✓</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="message-row sent">
+                    <div class="message-avatar">You</div>
+                    <div>
+                        <div class="message-bubble">
+                            Great! I can help you with React.
+                            <div class="message-meta">2:33 PM • ✓✓</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="message-row received">
+                    <div class="message-avatar">AJ</div>
+                    <div>
+                        <div class="message-bubble">
+                            I noticed we both like Python. What's your favorite project?
+                            <div class="message-meta">2:34 PM • ✓✓</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="typing-indicator" id="typingIndicator">Alex is typing...</div>
+            
+            <div class="chat-input-area">
+                <div class="chat-input-wrapper">
+                    <button class="chat-btn" title="Emoji">😊</button>
+                    <button class="chat-btn" title="Attachment">📎</button>
+                    <input type="text" class="chat-input" placeholder="Type a message..." id="messageInput">
+                    <button class="chat-btn chat-send-btn" title="Send">➤</button>
+                </div>
+            </div>
+            
+            <div class="action-bar">
+                <button class="action-btn primary">🟢 Add Friend</button>
+                <button class="action-btn warning">🔄 Skip User</button>
+                <button class="action-btn danger">❌ End Chat</button>
+                <button class="action-btn">🚩 Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const messagesContainer = document.getElementById('messages');
+    const messageInput = document.getElementById('messageInput');
+    const typingIndicator = document.getElementById('typingIndicator');
+    
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    // Send message on Enter
+    messageInput?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && this.value.trim()) {
+            addMessage(this.value.trim(), 'sent');
+            this.value = '';
+            
+            // Simulate reply after 2 seconds
+            setTimeout(() => {
+                showTyping();
+                setTimeout(() => {
+                    hideTyping();
+                    addMessage("That's interesting! Tell me more about your Django project.", 'received');
+                }, 2000);
+            }, 500);
+        }
+    });
+    
+    // Send button
+    document.querySelector('.chat-send-btn')?.addEventListener('click', () => {
+        const text = messageInput.value.trim();
+        if (text) {
+            addMessage(text, 'sent');
+            messageInput.value = '';
+        }
+    });
+    
+    function addMessage(text, type) {
+        const row = document.createElement('div');
+        row.className = `message-row ${type}`;
+        const avatar = type === 'sent' ? 'You' : 'AJ';
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        row.innerHTML = `
+            <div class="message-avatar">${avatar}</div>
+            <div>
+                <div class="message-bubble">
+                    ${text}
+                    <div class="message-meta">${time} • ${type === 'sent' ? '✓✓' : '✓✓'}</div>
+                </div>
+            </div>
+        `;
+        messagesContainer.appendChild(row);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    function showTyping() {
+        typingIndicator.classList.add('active');
+    }
+    
+    function hideTyping() {
+        typingIndicator.classList.remove('active');
+    }
+});
+
+function useStarter(text) {
+    const input = document.getElementById('messageInput');
+    if (input) {
+        input.value = text;
+        input.focus();
+    }
+}
+</script>
+{% endblock %}
