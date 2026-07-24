@@ -17,7 +17,7 @@ def register_view(request):
             user = form.save()
             login(request, user)
             messages.success(request, 'Account created successfully!')
-            return redirect('dashboard')
+            return redirect('core:dashboard')
     else:
         form = RegisterForm()
     return render(request, 'accounts/register.html', {'form': form})
@@ -44,7 +44,7 @@ def login_view(request):
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'detail': 'Logged in', 'redirect': '/dashboard/'})
             messages.success(request, f'Welcome back, {request.user.username}!')
-            return redirect('dashboard')
+            return redirect('core:dashboard')
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'detail': form.errors}, status=400)
     else:
@@ -56,7 +56,7 @@ def logout_view(request):
     from django.contrib.auth import logout
     logout(request)
     messages.info(request, 'You have been logged out.')
-    return redirect('home')
+    return redirect('core:home')
 
 
 @login_required
@@ -73,7 +73,7 @@ def edit_profile(request):
         if form.is_valid():
             form.save()
             messages.success(request, 'Profile updated successfully!')
-            return redirect('profile')
+            return redirect('accounts:profile')
     else:
         form = ProfileForm(instance=profile)
     return render(request, 'accounts/edit_profile.html', {'form': form})
@@ -83,7 +83,7 @@ def edit_profile(request):
 def convert_guest(request):
     if not request.user.is_guest:
         messages.error(request, 'Only guest accounts can convert.')
-        return redirect('dashboard')
+        return redirect('core:dashboard')
     return render(request, 'accounts/convert_guest.html')
 
 

@@ -10,6 +10,7 @@ from chat.models import ChatRoom
 from accounts.models import Profile
 from accounts.services import get_online_status
 import random
+import json
 import logging
 
 logger = logging.getLogger(__name__)

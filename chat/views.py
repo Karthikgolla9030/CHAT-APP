@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def chat_view(request, room_id):
     room = get_object_or_404(ChatRoom, id=room_id)
     if request.user not in [room.user1, room.user2]:
-        return redirect('home')
+        return redirect('core:home')
     other = room.user2 if room.user1 == request.user else room.user1
     common_interests = []
     try:
