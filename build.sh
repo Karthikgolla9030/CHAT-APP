@@ -2,9 +2,18 @@
 # exit on error
 set -o errexit
 
-if [ -d "backend" ]; then
-    echo "=== Executing backend build from root directory ==="
-    cd backend
+ROOT_DIR=$(pwd)
+
+echo "=== 1/2 Building React Frontend ==="
+if [ -d "$ROOT_DIR/frontend" ]; then
+    cd "$ROOT_DIR/frontend"
+    npm install
+    npm run build
+fi
+
+echo "=== 2/2 Building Django Backend ==="
+if [ -d "$ROOT_DIR/backend" ]; then
+    cd "$ROOT_DIR/backend"
 fi
 
 pip install --upgrade pip
