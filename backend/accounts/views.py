@@ -112,13 +112,13 @@ class CaptchaVerifyView(APIView):
         timestamp = request.data.get('timestamp')
         token = request.data.get('token')
 
-        if not answer or not timestamp or not token:
+        if answer is None or not timestamp or not token:
             return Response({'detail': 'answer, timestamp, and token are required'}, status=status.HTTP_400_BAD_REQUEST)
 
         valid = verify_captcha_challenge(answer, timestamp, token)
         if valid:
             return Response({'status': 'verified', 'detail': 'CAPTCHA challenge passed'})
-        return Response({'detail': 'Invalid or expired CAPTCHA solution'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': 'Incorrect answer. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ClaimAccountView(APIView):
