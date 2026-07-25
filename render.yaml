@@ -16,6 +16,15 @@ services:
         value: ".onrender.com,localhost,127.0.0.1"
       - key: CSRF_TRUSTED_ORIGINS
         value: "https://*.onrender.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: omniroute-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: omniroute-redis
+          property: connectionString
 
   - type: web
     name: omniroute-frontend
@@ -23,3 +32,8 @@ services:
     rootDir: frontend
     buildCommand: "npm run build"
     staticPublishPath: dist
+
+databases:
+  - name: omniroute-db
+    databaseName: omniroute
+    user: omniroute_user
