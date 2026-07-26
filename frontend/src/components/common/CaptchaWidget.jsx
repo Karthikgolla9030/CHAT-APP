@@ -39,8 +39,8 @@ export const CaptchaModal = ({ isOpen, onSuccess, onClose }) => {
         token: challenge.token,
       });
 
-      if (res.data.status === 'verified') {
-        onSuccess();
+      if (res.data.status === 'verified' && res.data.captcha_proof_token) {
+        onSuccess(res.data.captcha_proof_token);
       } else {
         setError('Incorrect CAPTCHA answer. Please try again.');
         fetchChallenge();
@@ -135,9 +135,9 @@ export const CaptchaCheckbox = ({ isVerified, onVerify }) => {
     }
   };
 
-  const handleSuccess = () => {
+  const handleSuccess = (proofToken) => {
     setShowModal(false);
-    onVerify();
+    onVerify(proofToken);
   };
 
   return (

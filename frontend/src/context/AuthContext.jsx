@@ -43,8 +43,11 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  const guestLogin = async (nickname) => {
-    const res = await api.post('/auth/guest-login/', { nickname });
+  const guestLogin = async (captchaProofToken, nickname) => {
+    const res = await api.post('/auth/guest-login/', {
+      captcha_proof_token: captchaProofToken,
+      nickname,
+    });
     localStorage.setItem('access_token', res.data.tokens.access);
     localStorage.setItem('refresh_token', res.data.tokens.refresh);
     setUser(res.data.user);

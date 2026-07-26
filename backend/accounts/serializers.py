@@ -50,3 +50,4 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class GuestLoginSerializer(serializers.Serializer):
     nickname = serializers.CharField(required=False, allow_blank=True, max_length=30)
+    captcha_proof_token = serializers.CharField(required=True, error_messages={'required': 'CAPTCHA verification is required to create a guest account.'})

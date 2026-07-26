@@ -55,8 +55,14 @@ class GuestLoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        from common.captcha import verify_and_consume_proof_token
         serializer = GuestLoginSerializer(data=request.data)
         if serializer.is_valid():
+            proof_token = serializer.validated_data['captcha_proof_token']
+            is_valid_token, err_msg = verify_and_consume_proof_token(proof_token)
+            if not is_valid_token:
+                return Response({'detail': err_msg}, status=status.HTTP_400_BAD_REQUEST)
+
             nickname = serializer.validated_data.get('nickname', '')
             user = create_guest_user(nickname=nickname)
             tokens = get_tokens_for_user(user)
@@ -107,7 +113,19 @@ class CaptchaVerifyView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        from common.captcha import verify_captcha_challenge
+        from common.captcha import verify_captcha_challenge, verify_external_captcha_token
+        
+        external_token = request.data.get('captcha_token') or request.data.get('h_captcha_response') or request.data.get('g_recaptcha_response')
+        if external_token:
+            valid, proof_token = verify_external_captcha_token(external_token)
+            if valid:
+                return Response({
+                    'status': 'verified',
+                    'detail': 'CAPTCHA verification successful',
+                    'captcha_proof_token': proof_token
+                })
+            return Response({'detail': 'External CAPTCHA verification failed. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
+
         answer = request.data.get('answer')
         timestamp = request.data.get('timestamp')
         token = request.data.get('token')
@@ -115,9 +133,13 @@ class CaptchaVerifyView(APIView):
         if answer is None or not timestamp or not token:
             return Response({'detail': 'answer, timestamp, and token are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        valid = verify_captcha_challenge(answer, timestamp, token)
+        valid, proof_token = verify_captcha_challenge(answer, timestamp, token)
         if valid:
-            return Response({'status': 'verified', 'detail': 'CAPTCHA challenge passed'})
+            return Response({
+                'status': 'verified',
+                'detail': 'CAPTCHA challenge passed',
+                'captcha_proof_token': proof_token
+            })
         return Response({'detail': 'Incorrect answer. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
 
 

@@ -18,11 +18,11 @@ const Home = () => {
     }
   };
 
-  const handleCaptchaSuccess = async () => {
+  const handleCaptchaSuccess = async (captchaProofToken) => {
     setShowCaptcha(false);
     setLoadingGuest(true);
     try {
-      await guestLogin();
+      await guestLogin(captchaProofToken);
       navigate('/dashboard');
     } catch (err) {
       console.error(err);
