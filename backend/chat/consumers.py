@@ -85,7 +85,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             )
 
     async def broadcast_message(self, event):
-        await self.send_json({'type': 'chat_message', 'message': event['message']})
+        msg = event['message']
+        # Friend-system signals are routed through the same broadcast channel
+        # They have a _type field instead of content so the frontend can distinguish them
+        if '_type' in msg:
+            await self.send_json({'type': msg['_type'], 'data': msg})
+        else:
+            await self.send_json({'type': 'chat_message', 'message': msg})
 
     async def broadcast_typing(self, event):
         if event['user_id'] != self.user.id:
