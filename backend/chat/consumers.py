@@ -8,18 +8,19 @@ from matchmaking.models import SkippedUser
 class ChatConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.user = self.scope.get('user')
-        self.room_id = self.scope['url_route']['kwargs']['room_id']
+        self.room_id_str = str(self.scope['url_route']['kwargs']['room_id'])
 
         if not self.user or self.user.is_anonymous:
             await self.close(code=4001)
             return
 
         self.room = await self.get_room()
-        if not self.room or self.user not in [self.room.user1, self.room.user2]:
+        is_member = await self.check_membership()
+        if not self.room or not is_member:
             await self.close(code=4003)
             return
 
-        self.room_group = f"chat_{self.room_id}"
+        self.room_group = f"chat_{self.room_id_str}"
         await self.channel_layer.group_add(self.room_group, self.channel_name)
         await self.accept()
 
@@ -99,9 +100,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def get_room(self):
         try:
-            return ChatRoom.objects.get(id=self.room_id)
-        except ChatRoom.DoesNotExist:
+            return ChatRoom.objects.get(id=self.room_id_str)
+        except Exception:
             return None
+
+    @database_sync_to_async
+    def check_membership(self):
+        if not self.room or not self.user or self.user.is_anonymous:
+            return False
+        return self.user.id in [self.room.user1_id, self.room.user2_id]
 
     @database_sync_to_async
     def save_message(self, content):

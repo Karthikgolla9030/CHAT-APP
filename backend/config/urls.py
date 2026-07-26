@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/v1/status/', api_status_view, name='api-status'),
     path('api/v1/auth/', include('accounts.urls')),
     path('api/v1/friends/', include('friends.urls')),
+    path('api/v1/chat/', include('chat.urls')),
 ]
 
 if settings.DEBUG:

@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { WS_BASE_URL } from '../utils/constants';
 import api from '../services/api';
-import { Send, SkipForward, UserPlus, ShieldAlert, Sparkles, Check, CheckCheck, MessageSquare } from 'lucide-react';
+import { Send, SkipForward, UserPlus, Sparkles, Check, CheckCheck, MessageSquare } from 'lucide-react';
 
 const ChatPage = () => {
   const { roomId } = useParams();
@@ -32,32 +32,74 @@ const ChatPage = () => {
     scrollToBottom();
   }, [messages, isPartnerTyping]);
 
+  // Fetch initial room message history
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!roomId) return;
+      try {
+        const res = await api.get(`/chat/rooms/${roomId}/messages/`);
+        setMessages(res.data);
+      } catch (err) {
+        console.error('Failed to load room message history:', err);
+      }
+    };
+    fetchHistory();
+  }, [roomId]);
+
+  // Establish real-time WebSocket connection
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token || !roomId) return;
 
-    const socketUrl = `${WS_BASE_URL}/chat/${roomId}/?token=${token}`;
+    const getWsProtocol = () => (window.location.protocol === 'https:' ? 'wss:' : 'ws:');
+    const getWsHost = () => window.location.host;
+
+    const socketUrl = import.meta.env.PROD
+      ? `${getWsProtocol()}//${getWsHost()}/ws/chat/${roomId}/?token=${token}`
+      : `${WS_BASE_URL}/chat/${roomId}/?token=${token}`;
+
     const ws = new WebSocket(socketUrl);
     wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    ws.onopen = () => {
+      console.log('Chat WebSocket connected for room:', roomId);
+    };
 
-      if (data.type === 'chat_message') {
-        setMessages((prev) => [...prev, data.message]);
-        if (data.message.sender_id !== user?.id) {
-          // Send mark_seen
-          ws.send(JSON.stringify({ type: 'mark_seen', message_id: data.message.id }));
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'chat_message') {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === data.message.id)) {
+              return prev;
+            }
+            return [...prev, data.message];
+          });
+
+          if (data.message.sender_id !== user?.id && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'mark_seen', message_id: data.message.id }));
+          }
+        } else if (data.type === 'typing') {
+          setIsPartnerTyping(data.is_typing);
+        } else if (data.type === 'mark_seen') {
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === data.message_id ? { ...msg, status: 'seen' } : msg))
+          );
+        } else if (data.type === 'chat_ended') {
+          setChatEnded(true);
         }
-      } else if (data.type === 'typing') {
-        setIsPartnerTyping(data.is_typing);
-      } else if (data.type === 'mark_seen') {
-        setMessages((prev) =>
-          prev.map((msg) => (msg.id === data.message_id ? { ...msg, status: 'seen' } : msg))
-        );
-      } else if (data.type === 'chat_ended') {
-        setChatEnded(true);
+      } catch (err) {
+        console.error('Error parsing chat WebSocket message:', err);
       }
+    };
+
+    ws.onerror = (err) => {
+      console.error('Chat WebSocket error:', err);
+    };
+
+    ws.onclose = () => {
+      console.log('Chat WebSocket closed.');
     };
 
     return () => {
@@ -69,7 +111,7 @@ const ChatPage = () => {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!inputMessage.trim() || !wsRef.current || chatEnded) return;
+    if (!inputMessage.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || chatEnded) return;
 
     wsRef.current.send(
       JSON.stringify({
@@ -83,7 +125,7 @@ const ChatPage = () => {
   };
 
   const handleTyping = (isTyping) => {
-    if (!wsRef.current || chatEnded) return;
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || chatEnded) return;
 
     wsRef.current.send(
       JSON.stringify({
@@ -99,7 +141,7 @@ const ChatPage = () => {
   };
 
   const handleSkipChat = () => {
-    if (wsRef.current && !chatEnded) {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && !chatEnded) {
       wsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
     }
     navigate('/match');
