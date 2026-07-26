@@ -2,6 +2,7 @@
 .env
 .env.*
 *.env
+*.pyc
 
 # Node / React
 node_modules/
@@ -27,6 +28,8 @@ local_settings.py
 db.sqlite3
 **/db.sqlite3
 db.sqlite3-journal
+backend/staticfiles/
+staticfiles/
 
 # IDE & OS
 .vscode/

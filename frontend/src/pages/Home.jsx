@@ -2,18 +2,20 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CaptchaModal } from '../components/common/CaptchaWidget';
-import { Sparkles, Shield, Zap, UserCheck, LogIn, Heart, ArrowRight } from 'lucide-react';
+import { Sparkles, Shield, Zap, UserCheck, LogIn, Heart, ArrowRight, AlertCircle } from 'lucide-react';
 
 const Home = () => {
   const { user, guestLogin } = useAuth();
   const navigate = useNavigate();
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [loadingGuest, setLoadingGuest] = useState(false);
+  const [error, setError] = useState('');
 
   const handleGuestClick = () => {
     if (user) {
       navigate('/dashboard');
     } else {
+      setError('');
       setShowCaptcha(true);
     }
   };
@@ -21,11 +23,13 @@ const Home = () => {
   const handleCaptchaSuccess = async (captchaProofToken) => {
     setShowCaptcha(false);
     setLoadingGuest(true);
+    setError('');
     try {
       await guestLogin(captchaProofToken);
       navigate('/dashboard');
     } catch (err) {
       console.error(err);
+      setError(err.response?.data?.detail || 'Guest login failed.');
     } finally {
       setLoadingGuest(false);
     }
@@ -52,6 +56,13 @@ const Home = () => {
         <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
           Start matching as a Guest in seconds, or sign in to your permanent account.
         </p>
+
+        {error && (
+          <div className="max-w-xl mx-auto p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center gap-3 text-red-400 text-sm">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
         {/* Guest vs Login/Register Options */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 max-w-xl mx-auto w-full">
