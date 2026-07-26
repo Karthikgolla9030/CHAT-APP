@@ -80,3 +80,33 @@ class GetOrCreateFriendRoomView(APIView):
                 'avatar': friend.profile.avatar.url if getattr(friend.profile, 'avatar', None) else None,
             }
         })
+
+
+class RoomDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, room_id):
+        room = get_object_or_404(ChatRoom, id=room_id)
+        if request.user.id not in [room.user1_id, room.user2_id]:
+            raise PermissionDenied("You are not a member of this chat room.")
+
+        # Find the partner
+        partner = room.user2 if room.user1 == request.user else room.user1
+
+        # Check if they are friends
+        is_friend = Friendship.objects.filter(
+            Q(user1_id=room.user1_id, user2_id=room.user2_id) |
+            Q(user1_id=room.user2_id, user2_id=room.user1_id)
+        ).exists()
+
+        return Response({
+            'room_id': str(room.id),
+            'status': room.status,
+            'is_friend_chat': is_friend,
+            'partner': {
+                'id': partner.id,
+                'username': partner.username,
+                'display_name': getattr(partner.profile, 'display_name', partner.username),
+                'avatar': partner.profile.avatar.url if getattr(partner.profile, 'avatar', None) else None,
+            }
+        })

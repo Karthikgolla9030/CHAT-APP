@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { WS_BASE_URL } from '../utils/constants';
+import { useActiveChat } from '../context/ActiveChatContext';
 import api from '../services/api';
 import {
   Send, SkipForward, Sparkles, Check, CheckCheck,
-  MessageSquare, UserPlus, UserCheck, UserX, Clock, Users, XCircle
+  MessageSquare, UserPlus, UserCheck, UserX, Clock, Users, XCircle, ArrowLeft
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────
 // FriendStatusButton — Lives in the chat header
 // Handles all 6 relationship states
 // ─────────────────────────────────────────────────
-const FriendStatusButton = ({ roomId, partner, currentUserId }) => {
+const FriendStatusButton = ({ roomId, partner }) => {
   // States: none | request_sent | request_received | friends | declined | loading
   const [relStatus, setRelStatus] = useState('loading');
   const [requestId, setRequestId] = useState(null);
@@ -89,7 +89,6 @@ const FriendStatusButton = ({ roomId, partner, currentUserId }) => {
     setShowPanel(false);
   };
 
-  // ── Render icon based on state ──
   const renderIcon = () => {
     switch (relStatus) {
       case 'loading':
@@ -142,7 +141,7 @@ const FriendStatusButton = ({ roomId, partner, currentUserId }) => {
 
       {/* Contextual Panel */}
       {showPanel && relStatus !== 'friends' && relStatus !== 'request_sent' && relStatus !== 'loading' && (
-        <div className="absolute right-0 top-10 z-50 w-64 glass-panel rounded-2xl border border-slate-700/80 shadow-2xl shadow-black/50 p-4 animate-fade-in">
+        <div className="absolute right-0 top-10 z-50 w-64 glass-panel rounded-2xl border border-slate-700/80 shadow-2xl shadow-black/50 p-4 bg-[#0B0F17]/95">
           {relStatus === 'none' && (
             <>
               <p className="text-sm font-semibold text-white mb-1">Add as Friend?</p>
@@ -198,7 +197,7 @@ const FriendStatusButton = ({ roomId, partner, currentUserId }) => {
 };
 
 // ─────────────────────────────────────────────────
-// ChatPage
+// ChatPage Component
 // ─────────────────────────────────────────────────
 const ChatPage = () => {
   const { roomId } = useParams();
@@ -206,41 +205,95 @@ const ChatPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const partner = location.state?.partner || { username: 'Stranger' };
-  const commonInterests = location.state?.common_interests || [];
+  const {
+    randomRoomId,
+    randomPartner,
+    randomInterests,
+    randomMessages,
+    randomPartnerTyping,
+    randomChatEnded,
+    randomWsRef,
+    connectRandomRoom,
+    handleSkip,
+    handleNextMatch,
+    setRandomMessages,
+    setRandomPartnerTyping,
+    setRandomChatEnded,
 
-  const [messages, setMessages] = useState([]);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isPartnerTyping, setIsPartnerTyping] = useState(false);
-  const [chatEnded, setChatEnded] = useState(false);
+    friendRoomId,
+    friendPartner,
+    friendMessages,
+    friendPartnerTyping,
+    friendChatEnded,
+    friendWsRef,
+    connectFriendRoom,
+    setFriendMessages,
+    setFriendPartnerTyping,
+    setFriendChatEnded
+  } = useActiveChat();
 
-  const wsRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
+  const [chatType, setChatType] = useState(null); // 'random' | 'friend' | 'loading'
+  const [partnerInfo, setPartnerInfo] = useState(location.state?.partner || null);
+  const [commonInterests, setCommonInterests] = useState(location.state?.common_interests || []);
+
   const messagesEndRef = useRef(null);
+  const [inputMessage, setInputMessage] = useState('');
+  const typingTimeoutRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Determine chat type and fetch room info if missing
+  useEffect(() => {
+    const resolveChat = async () => {
+      setChatType('loading');
+
+      // 1. Explicitly passed in state
+      if (location.state?.isFriendChat) {
+        setChatType('friend');
+        if (location.state.partner) setPartnerInfo(location.state.partner);
+        return;
+      }
+      if (location.state?.isRandomChat) {
+        setChatType('random');
+        if (location.state.partner) setPartnerInfo(location.state.partner);
+        return;
+      }
+
+      // 2. Fetch details from backend (handles page refreshes)
+      try {
+        const res = await api.get(`/chat/rooms/${roomId}/`);
+        setPartnerInfo(res.data.partner);
+        setChatType(res.data.is_friend_chat ? 'friend' : 'random');
+      } catch (err) {
+        console.error('Failed to resolve room:', err);
+        setChatType(null);
+      }
+    };
+
+    resolveChat();
+  }, [roomId, location.state]);
+
+  // Connect to the appropriate room once chatType and partnerInfo are resolved
+  useEffect(() => {
+    if (chatType === 'random' && partnerInfo) {
+      connectRandomRoom(roomId, partnerInfo, commonInterests);
+    } else if (chatType === 'friend' && partnerInfo) {
+      connectFriendRoom(roomId, partnerInfo);
+    }
+  }, [chatType, roomId, partnerInfo, commonInterests]);
+
+  const messages = chatType === 'friend' ? friendMessages : randomMessages;
+  const isPartnerTyping = chatType === 'friend' ? friendPartnerTyping : randomPartnerTyping;
+  const chatEnded = chatType === 'friend' ? friendChatEnded : randomChatEnded;
+  const wsRef = chatType === 'friend' ? friendWsRef : randomWsRef;
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, isPartnerTyping]);
 
-  // Fetch initial room message history
-  useEffect(() => {
-    const fetchHistory = async () => {
-      if (!roomId) return;
-      try {
-        const res = await api.get(`/chat/rooms/${roomId}/messages/`);
-        setMessages(res.data);
-      } catch (err) {
-        console.error('Failed to load room message history:', err);
-      }
-    };
-    fetchHistory();
-  }, [roomId]);
-
-  // Handle friend-system events delivered via the chat WebSocket
+  // Handle friend WS event routing if relevant
   const handleFriendEvent = useCallback((type, data) => {
     const setters = window.__friendStateSetters;
     if (!setters) return;
@@ -263,61 +316,42 @@ const ChatPage = () => {
     }
   }, [user?.id]);
 
-  // Establish real-time WebSocket connection
+  // Handle real-time incoming events
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token || !roomId) return;
+    if (!wsRef.current) return;
 
-    const socketUrl = import.meta.env.PROD
-      ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/chat/${roomId}/?token=${token}`
-      : `${WS_BASE_URL}/chat/${roomId}/?token=${token}`;
+    // Attach custom event handlers to hook up to inline friend state changes
+    const originalOnMessage = wsRef.current.onmessage;
+    wsRef.current.onmessage = (event) => {
+      // Call parent logic in ActiveChatContext
+      if (originalOnMessage) originalOnMessage(event);
 
-    const ws = new WebSocket(socketUrl);
-    wsRef.current = ws;
-
-    ws.onopen = () => console.log('Chat WS connected for room:', roomId);
-
-    ws.onmessage = (event) => {
+      // Parse and check for inline friendship updates
       try {
         const data = JSON.parse(event.data);
-
-        if (data.type === 'chat_message') {
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === data.message.id)) return prev;
-            return [...prev, data.message];
-          });
-          if (data.message.sender_id !== user?.id && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'mark_seen', message_id: data.message.id }));
-          }
-        } else if (data.type === 'typing') {
-          setIsPartnerTyping(data.is_typing);
-        } else if (data.type === 'mark_seen') {
-          setMessages((prev) =>
-            prev.map((msg) => (msg.id === data.message_id ? { ...msg, status: 'seen' } : msg))
-          );
-        } else if (data.type === 'chat_ended') {
-          setChatEnded(true);
-        } else if (
+        if (
           data.type === 'friend_request_received' ||
           data.type === 'friend_status_update' ||
           data.type === 'friend_request_declined'
         ) {
           handleFriendEvent(data.type, data.data);
         }
-      } catch (err) {
-        console.error('Error parsing chat WS message:', err);
+      } catch (e) {
+        console.error(e);
       }
     };
 
-    ws.onerror = (err) => console.error('Chat WS error:', err);
-    ws.onclose = () => console.log('Chat WS closed.');
-
-    return () => wsRef.current?.close();
-  }, [roomId, user?.id, handleFriendEvent]);
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.onmessage = originalOnMessage;
+      }
+    };
+  }, [wsRef.current, handleFriendEvent]);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!inputMessage.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || chatEnded) return;
+
     wsRef.current.send(JSON.stringify({ type: 'chat_message', message: inputMessage.trim() }));
     setInputMessage('');
     handleTyping(false);
@@ -332,21 +366,24 @@ const ChatPage = () => {
     }
   };
 
-  // Skip: ends current session and exits to preferences
-  const handleSkip = () => {
-    if (wsRef.current?.readyState === WebSocket.OPEN && !chatEnded) {
-      wsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
-    }
-    navigate('/match', { state: { autoStart: false } });
-  };
+  if (chatType === 'loading') {
+    return (
+      <div className="min-h-[calc(100vh-85px)] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
-  // Next Match: ends current session and starts matchmaking immediately
-  const handleNextMatch = () => {
-    if (wsRef.current?.readyState === WebSocket.OPEN && !chatEnded) {
-      wsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
-    }
-    navigate('/match', { state: { autoStart: true } });
-  };
+  if (!chatType || !partnerInfo) {
+    return (
+      <div className="min-h-[calc(100vh-85px)] flex flex-col items-center justify-center space-y-4">
+        <p className="text-slate-400">Failed to connect to this chat room.</p>
+        <button onClick={() => navigate('/dashboard')} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all">
+          Go to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 h-[calc(100vh-85px)] flex flex-col">
@@ -356,22 +393,33 @@ const ChatPage = () => {
 
         {/* Left: Partner Info */}
         <div className="flex items-center gap-3 min-w-0">
+          {chatType === 'friend' && (
+            <button
+              onClick={() => navigate('/friends')}
+              className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-all mr-1"
+              title="Back to Friends"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
           <div className="w-10 h-10 flex-shrink-0 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center font-bold text-white shadow-inner">
-            {partner.username?.charAt(0).toUpperCase() || 'S'}
+            {partnerInfo.username?.charAt(0).toUpperCase() || 'S'}
           </div>
           <div className="min-w-0">
             <h2 className="font-bold text-white text-base truncate">
-              {partner.display_name || partner.username}
+              {partnerInfo.display_name || partnerInfo.username}
             </h2>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-              <span className="text-xs text-slate-400">Connected in Chat</span>
+              <span className="text-xs text-slate-400">
+                {chatType === 'friend' ? 'Direct Messages' : 'Connected in Random Chat'}
+              </span>
             </div>
           </div>
         </div>
 
         {/* Center: Common Interests */}
-        {commonInterests.length > 0 && (
+        {chatType === 'random' && commonInterests.length > 0 && (
           <div className="hidden md:flex items-center gap-1.5 bg-indigo-500/10 px-3 py-1.5 rounded-xl border border-indigo-500/20 flex-shrink-0">
             <Sparkles className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
             <span className="text-xs font-semibold text-indigo-300 whitespace-nowrap">You both like:</span>
@@ -385,13 +433,10 @@ const ChatPage = () => {
 
         {/* Right: Friend icon */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {partner?.id && (
-            <FriendStatusButton
-              roomId={roomId}
-              partner={partner}
-              currentUserId={user?.id}
-            />
-          )}
+          <FriendStatusButton
+            roomId={roomId}
+            partner={partnerInfo}
+          />
         </div>
       </div>
 
@@ -434,13 +479,13 @@ const ChatPage = () => {
         {isPartnerTyping && (
           <div className="flex items-center gap-2 text-xs text-indigo-400 italic font-medium pt-1">
             <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
-            {partner.username} is typing...
+            {partnerInfo.username} is typing...
           </div>
         )}
 
         {chatEnded && (
           <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/30 text-center text-violet-300 text-xs font-semibold">
-            Chat session ended. Click Next Match below to find a new stranger.
+            Chat session ended.
           </div>
         )}
 
@@ -448,7 +493,7 @@ const ChatPage = () => {
       </div>
 
       {/* ── Input Bar ── */}
-      <form onSubmit={handleSendMessage} className="flex gap-2 mb-4">
+      <form onSubmit={handleSendMessage} className={`flex gap-2 ${chatType === 'random' ? 'mb-4' : ''}`}>
         <input
           type="text"
           disabled={chatEnded}
@@ -469,24 +514,26 @@ const ChatPage = () => {
         </button>
       </form>
 
-      {/* ── Bottom Controls: Skip / Next Match ── */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleSkip}
-          disabled={chatEnded}
-          className="flex-1 py-3.5 rounded-2xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-        >
-          <XCircle className="w-4 h-4" />
-          Skip
-        </button>
-        <button
-          onClick={handleNextMatch}
-          className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5"
-        >
-          <SkipForward className="w-4 h-4" />
-          Next Match
-        </button>
-      </div>
+      {/* ── Bottom Controls: Skip / Next Match (Only for Random Chat) ── */}
+      {chatType === 'random' && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSkip}
+            disabled={chatEnded}
+            className="flex-1 py-3.5 rounded-2xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+          >
+            <XCircle className="w-4 h-4" />
+            Skip
+          </button>
+          <button
+            onClick={handleNextMatch}
+            className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5"
+          >
+            <SkipForward className="w-4 h-4" />
+            Next Match
+          </button>
+        </div>
+      )}
     </div>
   );
 };

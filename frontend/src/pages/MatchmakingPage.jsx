@@ -71,6 +71,7 @@ const MatchmakingPage = () => {
             state: {
               partner: data.partner,
               common_interests: data.common_interests,
+              isRandomChat: true,
             },
           });
         }, 800);

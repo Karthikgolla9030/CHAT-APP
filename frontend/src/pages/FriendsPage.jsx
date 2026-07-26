@@ -68,6 +68,7 @@ const FriendsPage = () => {
       navigate(`/chat/${res.data.room_id}`, {
         state: {
           partner: res.data.partner,
+          isFriendChat: true,
         },
       });
     } catch (err) {
