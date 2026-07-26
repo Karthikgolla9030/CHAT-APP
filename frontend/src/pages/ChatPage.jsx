@@ -5,7 +5,7 @@ import { WS_BASE_URL } from '../utils/constants';
 import api from '../services/api';
 import {
   Send, SkipForward, Sparkles, Check, CheckCheck,
-  MessageSquare, UserPlus, UserCheck, UserX, Clock, Users
+  MessageSquare, UserPlus, UserCheck, UserX, Clock, Users, XCircle
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────
@@ -34,7 +34,6 @@ const FriendStatusButton = ({ roomId, partner, currentUserId }) => {
       .then(res => {
         setRelStatus(res.data.status);
         if (res.data.request_id) setRequestId(res.data.request_id);
-        // If we have an incoming request, auto-show the panel
         if (res.data.status === 'request_received') setShowPanel(true);
       })
       .catch(() => setRelStatus('none'));
@@ -117,7 +116,7 @@ const FriendStatusButton = ({ roomId, partner, currentUserId }) => {
         return (
           <button
             onClick={() => setShowPanel(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/25 border border-indigo-400/40 text-indigo-200 text-xs font-semibold animate-pulse-once hover:bg-indigo-500/35 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/25 border border-indigo-400/40 text-indigo-200 text-xs font-semibold hover:bg-indigo-500/35 transition-all"
           >
             <UserPlus className="w-3.5 h-3.5" />
             Friend Request
@@ -247,7 +246,6 @@ const ChatPage = () => {
     if (!setters) return;
 
     if (type === 'friend_request_received') {
-      // Only show to the receiver
       if (data.receiver_id === user?.id) {
         setters.setRelStatus('request_received');
         setters.setRequestId(data.request_id);
@@ -259,7 +257,6 @@ const ChatPage = () => {
         setters.setShowPanel(false);
       }
     } else if (type === 'friend_request_declined') {
-      // Notify sender that their request was declined
       if (data.sender_id === user?.id) {
         setters.setRelStatus('none');
       }
@@ -335,11 +332,20 @@ const ChatPage = () => {
     }
   };
 
-  const handleSkipChat = () => {
+  // Skip: ends current session and exits to preferences
+  const handleSkip = () => {
     if (wsRef.current?.readyState === WebSocket.OPEN && !chatEnded) {
       wsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
     }
-    navigate('/match');
+    navigate('/match', { state: { autoStart: false } });
+  };
+
+  // Next Match: ends current session and starts matchmaking immediately
+  const handleNextMatch = () => {
+    if (wsRef.current?.readyState === WebSocket.OPEN && !chatEnded) {
+      wsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
+    }
+    navigate('/match', { state: { autoStart: true } });
   };
 
   return (
@@ -377,7 +383,7 @@ const ChatPage = () => {
           </div>
         )}
 
-        {/* Right: Friend icon + Skip */}
+        {/* Right: Friend icon */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {partner?.id && (
             <FriendStatusButton
@@ -386,13 +392,6 @@ const ChatPage = () => {
               currentUserId={user?.id}
             />
           )}
-          <button
-            onClick={handleSkipChat}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/20 transition-all flex items-center gap-1.5"
-          >
-            <SkipForward className="w-3.5 h-3.5" />
-            Next
-          </button>
         </div>
       </div>
 
@@ -441,7 +440,7 @@ const ChatPage = () => {
 
         {chatEnded && (
           <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/30 text-center text-violet-300 text-xs font-semibold">
-            Chat session ended. Click Next to find a new stranger.
+            Chat session ended. Click Next Match below to find a new stranger.
           </div>
         )}
 
@@ -449,7 +448,7 @@ const ChatPage = () => {
       </div>
 
       {/* ── Input Bar ── */}
-      <form onSubmit={handleSendMessage} className="flex gap-2">
+      <form onSubmit={handleSendMessage} className="flex gap-2 mb-4">
         <input
           type="text"
           disabled={chatEnded}
@@ -469,6 +468,25 @@ const ChatPage = () => {
           <Send className="w-5 h-5" />
         </button>
       </form>
+
+      {/* ── Bottom Controls: Skip / Next Match ── */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSkip}
+          disabled={chatEnded}
+          className="flex-1 py-3.5 rounded-2xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+        >
+          <XCircle className="w-4 h-4" />
+          Skip
+        </button>
+        <button
+          onClick={handleNextMatch}
+          className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5"
+        >
+          <SkipForward className="w-4 h-4" />
+          Next Match
+        </button>
+      </div>
     </div>
   );
 };

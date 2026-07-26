@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { WS_BASE_URL, LOOKING_FOR_CHOICES, GENDER_CHOICES, PRESET_INTERESTS } from '../utils/constants';
 import { Sparkles, Sliders, Radio, XCircle, Tag, Plus, X } from 'lucide-react';
@@ -7,6 +7,7 @@ import { Sparkles, Sliders, Radio, XCircle, Tag, Plus, X } from 'lucide-react';
 const MatchmakingPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [isSearching, setIsSearching] = useState(false);
   const [gender, setGender] = useState(user?.profile?.gender || 'prefer_not_to_say');
@@ -102,6 +103,13 @@ const MatchmakingPage = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (location.state?.autoStart) {
+      // Start matchmaking automatically if navigated from 'Next Match'
+      startMatchmaking();
+    }
+  }, [location.state]);
 
   return (
     <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-8 relative overflow-hidden">
