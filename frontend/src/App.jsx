@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ActiveChatProvider, useActiveChat } from './context/ActiveChatContext';
+import { MatchPreferencesProvider } from './context/MatchPreferencesContext';
 import Navbar from './components/common/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -143,9 +144,11 @@ export default function App() {
   return (
     <AuthProvider>
       <Router>
-        <ActiveChatProvider>
-          <AppRoutes />
-        </ActiveChatProvider>
+        <MatchPreferencesProvider>
+          <ActiveChatProvider>
+            <AppRoutes />
+          </ActiveChatProvider>
+        </MatchPreferencesProvider>
       </Router>
     </AuthProvider>
   );

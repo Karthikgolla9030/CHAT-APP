@@ -32,8 +32,6 @@ class MatchmakingConsumer(AsyncJsonWebsocketConsumer):
             partner, score, common_interests = await database_sync_to_async(find_match_for_user)(self.user, filters)
             if partner:
                 room = await database_sync_to_async(execute_match)(self.user, partner, score)
-                
-                # Broadcast match_found to both users via group channels
                 match_data = {
                     'type': 'match_found',
                     'room_id': str(room.id),
@@ -45,7 +43,6 @@ class MatchmakingConsumer(AsyncJsonWebsocketConsumer):
                     },
                     'common_interests': common_interests
                 }
-                
                 partner_match_data = {
                     'type': 'match_found',
                     'room_id': str(room.id),
@@ -57,13 +54,49 @@ class MatchmakingConsumer(AsyncJsonWebsocketConsumer):
                     },
                     'common_interests': common_interests
                 }
+                await self.channel_layer.group_send(f"user_{self.user.id}", {'type': 'match_notification', 'data': match_data})
+                await self.channel_layer.group_send(f"user_{partner.id}", {'type': 'match_notification', 'data': partner_match_data})
 
+        elif msg_type == 'update_queue_preferences':
+            # In-flight preference update — no new WS connection needed
+            # update_or_create is idempotent; safe to call while already in queue
+            filters = content.get('filters', {})
+            await self.join_queue_db(filters)
+            await self.send_json({'type': 'queue_updated', 'status': 'searching'})
+
+            # Re-scan for a match with the new preferences
+            partner, score, common_interests = await database_sync_to_async(find_match_for_user)(self.user, filters)
+            if partner:
+                room = await database_sync_to_async(execute_match)(self.user, partner, score)
+                match_data = {
+                    'type': 'match_found',
+                    'room_id': str(room.id),
+                    'partner': {
+                        'id': partner.id,
+                        'username': partner.username,
+                        'display_name': getattr(partner.profile, 'display_name', partner.username),
+                        'avatar': partner.profile.avatar.url if partner.profile.avatar else None,
+                    },
+                    'common_interests': common_interests
+                }
+                partner_match_data = {
+                    'type': 'match_found',
+                    'room_id': str(room.id),
+                    'partner': {
+                        'id': self.user.id,
+                        'username': self.user.username,
+                        'display_name': getattr(self.user.profile, 'display_name', self.user.username),
+                        'avatar': self.user.profile.avatar.url if self.user.profile.avatar else None,
+                    },
+                    'common_interests': common_interests
+                }
                 await self.channel_layer.group_send(f"user_{self.user.id}", {'type': 'match_notification', 'data': match_data})
                 await self.channel_layer.group_send(f"user_{partner.id}", {'type': 'match_notification', 'data': partner_match_data})
 
         elif msg_type == 'leave_queue':
             await self.leave_queue_db()
             await self.send_json({'type': 'queue_left', 'status': 'idle'})
+
 
     async def match_notification(self, event):
         await self.send_json(event['data'])
