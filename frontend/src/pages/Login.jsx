@@ -41,12 +41,12 @@ const Login = () => {
     setShowGuestCaptcha(true);
   };
 
-  const handleGuestCaptchaSuccess = async () => {
+  const handleGuestCaptchaSuccess = async (captchaProofToken) => {
     setShowGuestCaptcha(false);
     setError('');
     setLoading(true);
     try {
-      await guestLogin(guestNickname);
+      await guestLogin(captchaProofToken, guestNickname);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.detail || 'Guest login failed.');
