@@ -114,7 +114,19 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     def check_membership(self):
         if not self.room or not self.user or self.user.is_anonymous:
             return False
-        return self.user.id in [self.room.user1_id, self.room.user2_id]
+        if self.user.id not in [self.room.user1_id, self.room.user2_id]:
+            return False
+        # If the room is ended, check if they are currently friends
+        if self.room.status == 'ended':
+            from friends.models import Friendship
+            from django.db.models import Q
+            is_friend = Friendship.objects.filter(
+                Q(user1_id=self.room.user1_id, user2_id=self.room.user2_id) |
+                Q(user1_id=self.room.user2_id, user2_id=self.room.user1_id)
+            ).exists()
+            if not is_friend:
+                return False
+        return True
 
     @database_sync_to_async
     def save_message(self, content):

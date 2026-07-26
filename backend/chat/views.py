@@ -1,8 +1,15 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
+from django.contrib.auth import get_user_model
+from friends.models import Friendship, BlockedUser
 from .models import ChatRoom, Message
 from .serializers import MessageSerializer
+
+User = get_user_model()
 
 class RoomMessagesView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -13,4 +20,63 @@ class RoomMessagesView(generics.ListAPIView):
         room = get_object_or_404(ChatRoom, id=room_id)
         if self.request.user.id not in [room.user1_id, room.user2_id]:
             raise PermissionDenied("You are not a member of this chat room.")
+        
+        # If the room is ended, check if they are currently friends
+        if room.status == 'ended':
+            is_friend = Friendship.objects.filter(
+                Q(user1_id=room.user1_id, user2_id=room.user2_id) |
+                Q(user1_id=room.user2_id, user2_id=room.user1_id)
+            ).exists()
+            if not is_friend:
+                raise PermissionDenied("This chat room has ended and you are not friends with this user.")
+
         return Message.objects.filter(room=room).order_by('created_at')
+
+
+class GetOrCreateFriendRoomView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        friend_id = request.data.get('friend_id')
+        if not friend_id:
+            return Response({'detail': 'friend_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        friend = get_object_or_404(User, id=friend_id)
+
+        # 1. Check friendship exists in PostgreSQL
+        is_friend = Friendship.objects.filter(
+            Q(user1=request.user, user2=friend) | Q(user1=friend, user2=request.user)
+        ).exists()
+
+        if not is_friend:
+            raise PermissionDenied("You can only chat with your friends.")
+
+        # 2. Check blocks
+        is_blocked = BlockedUser.objects.filter(
+            Q(blocker=request.user, blocked=friend) | Q(blocker=friend, blocked=request.user)
+        ).exists()
+        if is_blocked:
+            raise PermissionDenied("Cannot start a chat session. User is blocked.")
+
+        # 3. Retrieve or create room (prevent duplicates by sorting u1, u2)
+        u1, u2 = (request.user, friend) if request.user.id < friend.id else (friend, request.user)
+        room, created = ChatRoom.objects.get_or_create(
+            user1=u1,
+            user2=u2,
+            defaults={'status': 'active'}
+        )
+
+        # If it was ended, change back to active
+        if room.status != 'active':
+            room.status = 'active'
+            room.save()
+
+        return Response({
+            'room_id': str(room.id),
+            'partner': {
+                'id': friend.id,
+                'username': friend.username,
+                'display_name': getattr(friend.profile, 'display_name', friend.username),
+                'avatar': friend.profile.avatar.url if getattr(friend.profile, 'avatar', None) else None,
+            }
+        })

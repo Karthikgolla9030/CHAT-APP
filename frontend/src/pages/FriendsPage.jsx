@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Users, UserCheck, Search, Check, X, UserX, MessageSquare } from 'lucide-react';
 
 const FriendsPage = () => {
+  const navigate = useNavigate();
   const [friends, setFriends] = useState([]);
   const [requests, setRequests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,6 +59,20 @@ const FriendsPage = () => {
       fetchRequests();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleChatWithFriend = async (friendId) => {
+    try {
+      const res = await api.post('/chat/friends/chat/', { friend_id: friendId });
+      navigate(`/chat/${res.data.room_id}`, {
+        state: {
+          partner: res.data.partner,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to start chat session with friend:', err);
+      alert('Could not start chat session with this friend.');
     }
   };
 
@@ -139,23 +155,42 @@ const FriendsPage = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {friends.map((item) => (
-              <div key={item.id} className="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/40 transition-all space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center font-bold text-white">
-                    {item.friend.username.charAt(0).toUpperCase()}
+              <div key={item.id} className="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/40 transition-all flex flex-col justify-between space-y-3">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center font-bold text-white">
+                        {item.friend.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white text-base">{item.friend.profile?.display_name || item.friend.username}</h3>
+                        <span className="text-xs text-indigo-400">@{item.friend.username}</span>
+                      </div>
+                    </div>
+                    {/* Online / Offline status dot */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className={`w-2 h-2 rounded-full ${item.friend.profile?.online_status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
+                        {item.friend.profile?.online_status === 'online' ? 'Online' : 'Offline'}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-white text-base">{item.friend.profile?.display_name || item.friend.username}</h3>
-                    <span className="text-xs text-indigo-400">@{item.friend.username}</span>
+
+                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                    <span>{item.friend.profile?.country || 'Global'}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold">
+                      Friend
+                    </span>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                  <span>{item.friend.profile?.country || 'Global'}</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold">
-                    Friend
-                  </span>
-                </div>
+                <button
+                  onClick={() => handleChatWithFriend(item.friend.id)}
+                  className="w-full mt-2 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs shadow-md shadow-indigo-600/10 transition-all flex items-center justify-center gap-1.5"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Chat
+                </button>
               </div>
             ))}
           </div>
