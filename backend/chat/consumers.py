@@ -2,7 +2,7 @@ import json
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.utils import timezone
-from .models import ChatRoom, Message, TypingStatus
+from .models import ChatRoom, Message
 from matchmaking.models import SkippedUser
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
@@ -86,9 +86,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def broadcast_message(self, event):
         msg = event['message']
-        # Friend-system signals are routed through the same broadcast channel
-        # They have a _type field instead of content so the frontend can distinguish them
-        if '_type' in msg:
+        if isinstance(msg, dict) and '_type' in msg:
             await self.send_json({'type': msg['_type'], 'data': msg})
         else:
             await self.send_json({'type': 'chat_message', 'message': msg})
@@ -116,7 +114,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             return False
         if self.user.id not in [self.room.user1_id, self.room.user2_id]:
             return False
-        # If the room is ended, check if they are currently friends
         if self.room.status == 'ended':
             from friends.models import Friendship
             from django.db.models import Q

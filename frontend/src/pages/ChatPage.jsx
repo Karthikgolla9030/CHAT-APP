@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useActiveChat } from '../context/ActiveChatContext';
@@ -494,47 +494,6 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages, isPartnerTyping]);
 
-  const handleFriendEvent = useCallback(
-    (type, data) => {
-      const setters = window.__friendStateSetters;
-      if (!setters) return;
-      if (type === 'friend_request_received') {
-        if (data.receiver_id === user?.id) {
-          setters.setRelStatus('request_received');
-          setters.setRequestId(data.request_id);
-          setters.setShowPanel(true);
-        }
-      } else if (type === 'friend_status_update') {
-        if (data.new_status === 'friends') {
-          setters.setRelStatus('friends');
-          setters.setShowPanel(false);
-        }
-      } else if (type === 'friend_request_declined') {
-        if (data.sender_id === user?.id) setters.setRelStatus('none');
-      }
-    },
-    [user?.id]
-  );
-
-  useEffect(() => {
-    if (!wsRef.current) return;
-    const originalOnMessage = wsRef.current.onmessage;
-    wsRef.current.onmessage = (event) => {
-      if (originalOnMessage) originalOnMessage(event);
-      try {
-        const data = JSON.parse(event.data);
-        if (['friend_request_received', 'friend_status_update', 'friend_request_declined'].includes(data.type)) {
-          handleFriendEvent(data.type, data.data);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    return () => {
-      if (wsRef.current) wsRef.current.onmessage = originalOnMessage;
-    };
-  }, [wsRef.current, handleFriendEvent]);
-
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!inputMessage.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || chatEnded) return;
@@ -558,7 +517,7 @@ export default function ChatPage() {
 
   const onCancelSearch = () => {
     stopMatchmaking();
-    navigate('/dashboard');
+    navigate('/match');
   };
 
   if (chatType === 'loading') {
@@ -573,8 +532,8 @@ export default function ChatPage() {
     return (
       <div className="min-h-[calc(100vh-85px)] flex flex-col items-center justify-center space-y-4">
         <p className="text-xs text-[#9EA4AF]">Failed to connect to this chat room.</p>
-        <Button onClick={() => navigate('/dashboard')} variant="primary" size="sm">
-          Go to Dashboard
+        <Button onClick={() => navigate('/match')} variant="primary" size="sm">
+          Find a Match
         </Button>
       </div>
     );

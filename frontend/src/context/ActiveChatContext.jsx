@@ -30,7 +30,6 @@ export const ActiveChatProvider = ({ children }) => {
   // ─── Matchmaking session state ───────────────────────────────────────
   const [isSearching, setIsSearching] = useState(false);
   const [searchStatus, setSearchStatus] = useState('');
-  // sessionId prevents stale match_found events from old WS sessions
   const matchSessionIdRef = useRef(null);
   const matchWsRef = useRef(null);
 
@@ -62,7 +61,9 @@ export const ActiveChatProvider = ({ children }) => {
 
   const stopMatchmaking = useCallback(() => {
     if (matchWsRef.current) {
-      try { matchWsRef.current.send(JSON.stringify({ type: 'leave_queue' })); } catch (_) {}
+      try {
+        matchWsRef.current.send(JSON.stringify({ type: 'leave_queue' }));
+      } catch (_) {}
       matchWsRef.current.close();
       matchWsRef.current = null;
     }
@@ -71,23 +72,43 @@ export const ActiveChatProvider = ({ children }) => {
     setSearchStatus('');
   }, []);
 
-  // ─── Start matchmaking (called from Next Match or MatchmakingPage) ───
+  // ─── Helper for friend relationship state updates ────────────────────
+  const handleFriendSignal = (type, data) => {
+    const setters = window.__friendStateSetters;
+    if (!setters) return;
+    const friendData = data?.data || data;
+
+    if (type === 'friend_request_received') {
+      setters.setRelStatus('request_received');
+      if (friendData.request_id) setters.setRequestId(friendData.request_id);
+      setters.setShowPanel(true);
+    } else if (type === 'friend_status_update') {
+      if (friendData.new_status === 'friends') {
+        setters.setRelStatus('friends');
+        setters.setShowPanel(false);
+      }
+    } else if (type === 'friend_request_declined') {
+      setters.setRelStatus('none');
+    }
+  };
+
+  // ─── Start matchmaking ───────────────────────────────────────────────
   const startMatchmaking = useCallback((prefs) => {
-    // Guard: if already searching with open WS, update prefs in-flight
     if (matchWsRef.current && matchWsRef.current.readyState === WebSocket.OPEN) {
-      matchWsRef.current.send(JSON.stringify({
-        type: 'update_queue_preferences',
-        filters: {
-          gender: prefs.gender,
-          looking_for: prefs.lookingFor,
-          interests: prefs.interests,
-        },
-      }));
+      matchWsRef.current.send(
+        JSON.stringify({
+          type: 'update_queue_preferences',
+          filters: {
+            gender: prefs.gender,
+            looking_for: prefs.lookingFor,
+            interests: prefs.interests,
+          },
+        })
+      );
       setSearchStatus('Updated — searching with new preferences...');
       return;
     }
 
-    // Close any stale WS before opening a new one
     if (matchWsRef.current) {
       matchWsRef.current.close();
       matchWsRef.current = null;
@@ -96,10 +117,10 @@ export const ActiveChatProvider = ({ children }) => {
     const token = localStorage.getItem('access_token');
     if (!token) return;
 
-    // Generate a session ID to detect and discard stale events
-    const sessionId = (typeof crypto !== 'undefined' && crypto.randomUUID)
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random()}`;
+    const sessionId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`;
     matchSessionIdRef.current = sessionId;
 
     setIsSearching(true);
@@ -113,32 +134,33 @@ export const ActiveChatProvider = ({ children }) => {
     matchWsRef.current = ws;
 
     ws.onopen = () => {
-      // If cancelled before WS connected, bail out
-      if (matchSessionIdRef.current !== sessionId) { ws.close(); return; }
+      if (matchSessionIdRef.current !== sessionId) {
+        ws.close();
+        return;
+      }
       setSearchStatus('Scanning for compatible strangers...');
-      ws.send(JSON.stringify({
-        type: 'join_queue',
-        filters: {
-          gender: prefs.gender,
-          looking_for: prefs.lookingFor,
-          interests: prefs.interests,
-        },
-      }));
+      ws.send(
+        JSON.stringify({
+          type: 'join_queue',
+          filters: {
+            gender: prefs.gender,
+            looking_for: prefs.lookingFor,
+            interests: prefs.interests,
+          },
+        })
+      );
     };
 
     ws.onmessage = (event) => {
-      // Discard if this session has been superseded
       if (matchSessionIdRef.current !== sessionId) return;
 
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'match_found') {
-          // Clean up matchmaking state before navigating
           matchWsRef.current = null;
           matchSessionIdRef.current = null;
           setIsSearching(false);
           setSearchStatus('');
-          // Also clear any previous random chat session
           clearRandomChat();
           navigate(`/chat/${data.room_id}`, {
             state: {
@@ -161,8 +183,6 @@ export const ActiveChatProvider = ({ children }) => {
     };
 
     ws.onclose = () => {
-      if (matchSessionIdRef.current !== sessionId) return;
-      // Only clear searching state if this was not a deliberate close
       if (matchSessionIdRef.current === sessionId) {
         matchSessionIdRef.current = null;
         setIsSearching(false);
@@ -171,7 +191,7 @@ export const ActiveChatProvider = ({ children }) => {
     };
   }, [navigate]);
 
-  // ─── Skip: end chat, go to preferences page (deliberate pause, no auto-start) ─
+  // ─── Skip: end chat, go to preferences page ──────────────────────────
   const handleSkip = () => {
     if (randomWsRef.current && randomWsRef.current.readyState === WebSocket.OPEN) {
       randomWsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
@@ -181,10 +201,8 @@ export const ActiveChatProvider = ({ children }) => {
     navigate('/match', { state: { autoStart: false } });
   };
 
-  // ─── Next Match: end chat, immediately start searching using active prefs ──
-  // prefs are passed in by the caller (ChatPage reads from MatchPreferencesContext)
+  // ─── Next Match: end chat, start searching ───────────────────────────
   const handleNextMatch = (prefs) => {
-    // Guard: prevent double-click while already searching
     if (isSearching) return;
 
     if (randomWsRef.current && randomWsRef.current.readyState === WebSocket.OPEN) {
@@ -242,6 +260,8 @@ export const ActiveChatProvider = ({ children }) => {
           );
         } else if (data.type === 'chat_ended') {
           setRandomChatEnded(true);
+        } else if (['friend_request_received', 'friend_status_update', 'friend_request_declined'].includes(data.type)) {
+          handleFriendSignal(data.type, data);
         }
       } catch (err) {
         console.error('Error in random WS:', err);
@@ -296,6 +316,8 @@ export const ActiveChatProvider = ({ children }) => {
           );
         } else if (data.type === 'chat_ended') {
           setFriendChatEnded(true);
+        } else if (['friend_request_received', 'friend_status_update', 'friend_request_declined'].includes(data.type)) {
+          handleFriendSignal(data.type, data);
         }
       } catch (err) {
         console.error('Error in friend WS:', err);
@@ -313,7 +335,6 @@ export const ActiveChatProvider = ({ children }) => {
   return (
     <ActiveChatContext.Provider
       value={{
-        // Random chat
         randomRoomId,
         randomPartner,
         randomInterests,
@@ -327,7 +348,6 @@ export const ActiveChatProvider = ({ children }) => {
         setRandomPartnerTyping,
         setRandomChatEnded,
 
-        // Friend chat
         friendRoomId,
         friendPartner,
         friendMessages,
@@ -340,7 +360,6 @@ export const ActiveChatProvider = ({ children }) => {
         setFriendPartnerTyping,
         setFriendChatEnded,
 
-        // Matchmaking
         isSearching,
         searchStatus,
         startMatchmaking,
@@ -348,7 +367,6 @@ export const ActiveChatProvider = ({ children }) => {
         handleSkip,
         handleNextMatch,
 
-        // Logout
         handleLogoutClear,
       }}
     >
