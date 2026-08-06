@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PRESET_INTERESTS, GENDER_CHOICES, LOOKING_FOR_CHOICES } from '../utils/constants';
-import { User, Tag, Save, Check, Plus, AlertCircle, X } from 'lucide-react';
+import { User, Tag, Save, Check, Plus, X } from 'lucide-react';
+import { Card, Button, Badge } from '../components/ui';
 
-const ProfilePage = () => {
+export default function ProfilePage() {
   const { user, updateProfile } = useAuth();
 
   const [displayName, setDisplayName] = useState(user?.profile?.display_name || '');
@@ -71,66 +72,60 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10 space-y-8">
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Edit Profile</h1>
-          <p className="text-slate-400 text-sm mt-1">Customize your profile & normalized interest tags for matching</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Edit Profile</h1>
+          <p className="text-xs text-[#9EA4AF] mt-1">Customize your profile & normalized interest tags for matching</p>
         </div>
         {saved && (
-          <div className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-1.5">
-            <Check className="w-4 h-4" />
-            Profile Saved!
-          </div>
+          <Badge tone="success">
+            <Check className="w-3.5 h-3.5" />
+            <span>Profile Saved!</span>
+          </Badge>
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Basic Information */}
-        <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-6">
-          <div className="flex items-center gap-2 text-white font-bold text-base">
-            <User className="w-5 h-5 text-indigo-400" />
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Personal Information */}
+        <Card className="p-6 bg-[#14181F] border-white/[0.05] space-y-6">
+          <div className="flex items-center gap-2 text-white font-semibold text-sm uppercase tracking-wider">
+            <User className="w-4 h-4 text-[#A66BFF]" />
             <span>Personal Information</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Display Name
-              </label>
+              <label className="label">Display Name</label>
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Alex Developer"
-                className="w-full px-4 py-3 rounded-xl glass-input text-sm focus:outline-none"
+                className="input"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Country
-              </label>
+              <label className="label">Country</label>
               <input
                 type="text"
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
                 placeholder="United States"
-                className="w-full px-4 py-3 rounded-xl glass-input text-sm focus:outline-none"
+                className="input"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Gender
-              </label>
+              <label className="label">Gender</label>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl glass-input text-sm focus:outline-none"
+                className="input"
               >
                 {GENDER_CHOICES.map((choice) => (
-                  <option key={choice.value} value={choice.value} className="bg-slate-900 text-white">
+                  <option key={choice.value} value={choice.value} className="bg-[#14181F] text-white">
                     {choice.label}
                   </option>
                 ))}
@@ -138,16 +133,14 @@ const ProfilePage = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Looking For
-              </label>
+              <label className="label">Looking For</label>
               <select
                 value={lookingFor}
                 onChange={(e) => setLookingFor(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl glass-input text-sm focus:outline-none"
+                className="input"
               >
                 {LOOKING_FOR_CHOICES.map((choice) => (
-                  <option key={choice.value} value={choice.value} className="bg-slate-900 text-white">
+                  <option key={choice.value} value={choice.value} className="bg-[#14181F] text-white">
                     {choice.label}
                   </option>
                 ))}
@@ -156,63 +149,59 @@ const ProfilePage = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-              Bio
-            </label>
+            <label className="label">Bio</label>
             <textarea
               rows={3}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell strangers a little bit about yourself..."
-              className="w-full px-4 py-3 rounded-xl glass-input text-sm focus:outline-none"
+              className="input"
             />
           </div>
-        </div>
+        </Card>
 
-        {/* Normalized Interest System */}
-        <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-6">
+        {/* Interest Tags */}
+        <Card className="p-6 bg-[#14181F] border-white/[0.05] space-y-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white font-bold text-base">
-              <Tag className="w-5 h-5 text-violet-400" />
+            <div className="flex items-center gap-2 text-white font-semibold text-sm uppercase tracking-wider">
+              <Tag className="w-4 h-4 text-[#D97FA6]" />
               <span>Interest Tags</span>
             </div>
-            <span className="text-xs text-slate-400">{selectedInterests.length} selected</span>
+            <span className="text-xs text-[#9EA4AF]">{selectedInterests.length} selected</span>
           </div>
 
           {/* Active Selected Tags Display */}
           {selectedInterests.length > 0 && (
-            <div className="flex flex-wrap gap-2 p-3 rounded-2xl bg-slate-900/60 border border-slate-800">
+            <div className="flex flex-wrap gap-2 p-3 rounded-xl bg-[#101319] border border-white/[0.05]">
               {selectedInterests.map((tag) => (
                 <span
                   key={tag}
-                  className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white border border-indigo-400 text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-500/20"
+                  className="px-2.5 py-1 rounded-lg bg-[#A66BFF]/15 border border-[#A66BFF]/40 text-[#A66BFF] text-xs font-medium flex items-center gap-1.5"
                 >
                   #{tag}
                   <button
                     type="button"
                     onClick={() => toggleInterest(tag)}
-                    className="hover:text-red-200 transition-colors p-0.5 rounded-full hover:bg-indigo-500"
+                    className="hover:text-white p-0.5 rounded-md hover:bg-[#A66BFF]/30 transition-colors"
                     title="Remove tag"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-3 h-3" />
                   </button>
                 </span>
               ))}
             </div>
           )}
 
-          {/* Preset Interest Chips */}
-          <div className="space-y-3">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Popular Presets
-            </label>
-            <div className="flex flex-wrap gap-2">
+          {/* Popular Presets */}
+          <div className="space-y-2">
+            <label className="label">Popular Presets</label>
+            <div className="flex flex-wrap gap-1.5">
               {PRESET_INTERESTS.filter((tag) => !selectedInterests.includes(tag)).map((tag) => (
                 <button
                   type="button"
                   key={tag}
                   onClick={() => toggleInterest(tag)}
-                  className="glass-panel text-slate-400 border border-slate-800 hover:border-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all"
+                  className="chip text-[#9EA4AF] hover:text-white"
                 >
                   +#{tag}
                 </button>
@@ -221,41 +210,39 @@ const ProfilePage = () => {
           </div>
 
           {/* Custom Interest Input */}
-          <div className="space-y-3 pt-2">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Add Custom Interest
-            </label>
+          <div className="space-y-2 pt-2">
+            <label className="label">Add Custom Interest</label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={customInterest}
                 onChange={(e) => setCustomInterest(e.target.value)}
                 placeholder="e.g. Quantum Computing, Cyberpunk"
-                className="flex-1 px-4 py-2.5 rounded-xl glass-input text-xs focus:outline-none"
+                className="input flex-1 text-xs"
               />
               <button
                 type="button"
                 onClick={handleAddCustomInterest}
-                className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-all flex items-center gap-1"
+                className="btn btn-secondary btn-md gap-1 text-xs"
               >
                 <Plus className="w-4 h-4" />
-                Add Tag
+                <span>Add Tag</span>
               </button>
             </div>
           </div>
-        </div>
+        </Card>
 
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className="w-full py-4 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-xl shadow-indigo-600/30 transition-all duration-300 flex items-center justify-center gap-2"
+          variant="primary"
+          size="lg"
+          className="w-full font-semibold gap-2"
         >
-          <Save className="w-5 h-5" />
-          {loading ? 'Saving Changes...' : 'Save Profile Preferences'}
-        </button>
+          <Save className="w-4 h-4" />
+          <span>{loading ? 'Saving Changes...' : 'Save Profile Preferences'}</span>
+        </Button>
       </form>
     </div>
   );
-};
-
-export default ProfilePage;
+}

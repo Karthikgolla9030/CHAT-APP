@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { Shield, ShieldCheck, RefreshCw, AlertCircle, ArrowRight, Check } from 'lucide-react';
+import { Card, Button } from '../ui';
 
 export const CaptchaModal = ({ isOpen, onSuccess, onClose }) => {
   const [challenge, setChallenge] = useState(null);
@@ -56,36 +57,35 @@ export const CaptchaModal = ({ isOpen, onSuccess, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-      <div className="w-full max-w-sm glass-panel p-6 rounded-3xl border border-slate-800 shadow-2xl relative space-y-5 text-center">
-        {/* Shield Icon matching reference image */}
-        <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-700/80 flex items-center justify-center mx-auto text-slate-200 shadow-xl">
-          <Shield className="w-8 h-8 text-slate-100" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
+      <Card className="w-full max-w-sm p-6 bg-[#14181F] border-white/[0.08] shadow-menu space-y-5 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-[#101319] border border-white/10 flex items-center justify-center mx-auto text-[#A66BFF]">
+          <Shield className="w-7 h-7" />
         </div>
 
         <div className="space-y-1">
-          <h2 className="text-2xl font-extrabold text-white">Are you human?</h2>
-          <p className="text-slate-400 text-xs">
-            Please complete the captcha below to continue
+          <h2 className="text-xl font-bold text-white tracking-tight">Are you human?</h2>
+          <p className="text-[#9EA4AF] text-xs">
+            Please solve the verification challenge below to continue
           </p>
         </div>
 
         {error && (
-          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center justify-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="p-3 rounded-xl bg-[#D66B6B]/10 border border-[#D66B6B]/30 text-[#D66B6B] text-xs flex items-center justify-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center relative">
-            <span className="text-2xl font-black text-indigo-300 tracking-widest font-mono">
+          <div className="p-4 rounded-xl bg-[#101319] border border-white/[0.06] text-center relative">
+            <span className="text-2xl font-bold text-[#A66BFF] tracking-widest font-mono">
               {challenge ? challenge.question : 'Loading...'}
             </span>
             <button
               type="button"
               onClick={fetchChallenge}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-[#9EA4AF] hover:text-white transition-colors cursor-pointer"
               title="Refresh challenge"
             >
               <RefreshCw className="w-4 h-4" />
@@ -99,29 +99,33 @@ export const CaptchaModal = ({ isOpen, onSuccess, onClose }) => {
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               placeholder="Type answer number..."
-              className="w-full px-4 py-3 rounded-xl glass-input text-sm text-center font-bold text-white focus:outline-none"
+              className="input text-center font-bold text-sm"
             />
           </div>
 
           <div className="flex gap-2 pt-1">
-            <button
+            <Button
               type="button"
               onClick={onClose}
-              className="w-1/3 py-3 rounded-xl text-xs font-semibold text-slate-400 hover:text-white glass-panel border border-slate-800 transition-all"
+              variant="ghost"
+              size="md"
+              className="w-1/3"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={loading || !challenge}
-              className="flex-1 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2"
+              variant="primary"
+              size="md"
+              className="flex-1 font-semibold gap-1.5"
             >
-              {loading ? 'Verifying...' : 'Verify Answer'}
+              <span>{loading ? 'Verifying...' : 'Verify Answer'}</span>
               <ArrowRight className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 };
@@ -144,28 +148,28 @@ export const CaptchaCheckbox = ({ isVerified, onVerify }) => {
     <>
       <div
         onClick={handleClick}
-        className={`w-full p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+        className={`w-full p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
           isVerified
-            ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300'
-            : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 text-slate-300'
+            ? 'bg-[#7BAA82]/10 border-[#7BAA82]/40 text-[#7BAA82]'
+            : 'bg-[#101319] border-white/[0.08] hover:border-white/15 text-[#9EA4AF]'
         }`}
       >
         <div className="flex items-center gap-3">
           <div
-            className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all ${
+            className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
               isVerified
-                ? 'bg-emerald-500 border-emerald-400 text-slate-950'
-                : 'border-slate-600 bg-slate-950 hover:border-slate-400'
+                ? 'bg-[#7BAA82] border-[#7BAA82] text-black'
+                : 'border-white/20 bg-[#14181F]'
             }`}
           >
-            {isVerified && <Check className="w-4 h-4 stroke-[3]" />}
+            {isVerified && <Check className="w-3.5 h-3.5 stroke-[3]" />}
           </div>
-          <span className="text-sm font-semibold">I am human</span>
+          <span className="text-xs font-semibold text-white">I am human</span>
         </div>
 
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-          <ShieldCheck className="w-4 h-4 text-cyan-400" />
-          <span>OmniCaptcha</span>
+        <div className="flex items-center gap-1.5 text-[10px] text-[#9EA4AF] font-semibold uppercase tracking-wider">
+          <ShieldCheck className="w-3.5 h-3.5 text-[#A66BFF]" />
+          <span>Verification</span>
         </div>
       </div>
 

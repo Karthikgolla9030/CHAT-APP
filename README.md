@@ -1,6 +1,6 @@
-# OmniRoute - Decoupled Full-Stack Real-Time Matchmaking & Chat Application
+# ConnectSphere - Decoupled Full-Stack Real-Time Matchmaking & Chat Application
 
-OmniRoute is a modern, high-performance real-time random chat application. Built as a decoupled full-stack project using **Django REST Framework + Django Channels** for the backend and **React.js + Vite + Tailwind CSS** for the frontend.
+ConnectSphere is a modern, high-performance real-time random chat application. Built as a decoupled full-stack project using **Django REST Framework + Django Channels** for the backend and **React.js + Vite + Tailwind CSS** for the frontend.
 
 ---
 

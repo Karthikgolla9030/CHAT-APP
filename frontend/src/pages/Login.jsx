@@ -3,8 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CaptchaCheckbox, CaptchaModal } from '../components/common/CaptchaWidget';
 import { LogIn, UserCheck, AlertCircle, ArrowRight } from 'lucide-react';
+import { Logo } from '../components/ui';
 
-const Login = () => {
+export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [guestNickname, setGuestNickname] = useState('');
@@ -20,7 +21,7 @@ const Login = () => {
   const handleStandardSubmit = async (e) => {
     e.preventDefault();
     if (!isCaptchaVerified) {
-      setError('Please complete the "I am human" verification checkbox before signing in.');
+      setError('Please complete the "I am human" verification check before signing in.');
       return;
     }
 
@@ -56,54 +57,50 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md glass-panel p-8 rounded-3xl shadow-2xl border border-slate-800 relative z-10">
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-indigo-500/20">
-            {isGuestMode ? <UserCheck className="w-6 h-6 text-cyan-400" /> : <LogIn className="w-6 h-6 text-indigo-400" />}
-          </div>
-          <h2 className="text-2xl font-bold text-white">
-            {isGuestMode ? 'Instant Guest Chat' : 'Welcome Back'}
-          </h2>
-          <p className="text-slate-400 text-sm mt-1">
-            {isGuestMode ? 'Enter a nickname to chat immediately' : 'Sign in to your OmniRoute account'}
-          </p>
-        </div>
+    <div className="w-full max-w-md px-4 py-12 mx-auto animate-fade-in">
+      <div className="text-center mb-8">
+        <Link to="/" className="inline-block mb-4">
+          <Logo showSubtitle />
+        </Link>
+        <h1 className="text-2xl font-bold text-white">
+          {isGuestMode ? 'Instant Guest Chat' : 'Welcome Back'}
+        </h1>
+        <p className="text-xs text-[#9EA4AF] mt-1.5">
+          {isGuestMode ? 'Enter a nickname to chat immediately' : 'Sign in to your ConnectSphere account'}
+        </p>
+      </div>
 
+      <div className="bg-[#14181F] border border-white/[0.06] p-7 rounded-xl shadow-menu">
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center gap-3 text-red-400 text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
+          <div className="mb-5 p-3.5 rounded-xl bg-[#D66B6B]/10 border border-[#D66B6B]/30 flex items-center gap-3 text-[#D66B6B] text-xs">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {!isGuestMode ? (
-          <form onSubmit={handleStandardSubmit} className="space-y-5">
+          <form onSubmit={handleStandardSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Username or Email
-              </label>
+              <label className="label">Username or Email</label>
               <input
                 type="text"
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="alex_dev"
-                className="w-full px-4 py-3 rounded-xl glass-input text-sm focus:outline-none transition-all"
+                className="input"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Password
-              </label>
+              <label className="label">Password</label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl glass-input text-sm focus:outline-none transition-all"
+                className="input"
               />
             </div>
 
@@ -116,55 +113,49 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading || !isCaptchaVerified}
-              className={`w-full py-3.5 px-4 rounded-xl text-sm font-semibold text-white transition-all duration-300 flex items-center justify-center gap-2 ${
-                isCaptchaVerified
-                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/25'
-                  : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-              }`}
+              className="btn btn-primary btn-md w-full justify-center font-semibold mt-2"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              <span>{loading ? 'Signing in...' : 'Sign In'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
         ) : (
-          <form onSubmit={handleGuestSubmit} className="space-y-5">
+          <form onSubmit={handleGuestSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Nickname (Optional)
-              </label>
+              <label className="label">Nickname (Optional)</label>
               <input
                 type="text"
                 value={guestNickname}
                 onChange={(e) => setGuestNickname(e.target.value)}
                 placeholder="ShadowChatter"
-                className="w-full px-4 py-3 rounded-xl glass-input text-sm focus:outline-none transition-all"
+                className="input"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 px-4 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 shadow-lg shadow-cyan-500/25 transition-all duration-300 flex items-center justify-center gap-2"
+              className="btn btn-primary btn-md w-full justify-center font-semibold mt-2"
             >
-              {loading ? 'Creating session...' : 'Continue as Guest'}
+              <span>{loading ? 'Creating session...' : 'Continue as Guest'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
         )}
 
-        <div className="mt-8 pt-6 border-t border-slate-800/80 text-center space-y-3">
+        <div className="mt-6 pt-5 border-t border-white/[0.05] text-center space-y-3">
           <button
             type="button"
             onClick={() => setIsGuestMode(!isGuestMode)}
-            className="text-sm font-medium text-cyan-400 hover:underline"
+            className="text-xs font-medium text-[#A66BFF] hover:underline cursor-pointer"
           >
             {isGuestMode ? 'Use account credentials' : 'Try as temporary Guest instead'}
           </button>
 
           {!isGuestMode && (
-            <p className="text-xs text-slate-400">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-indigo-400 font-semibold hover:underline">
+            <p className="text-xs text-[#9EA4AF]">
+              Don&apos;t have an account?{' '}
+              <Link to="/register" className="text-[#A66BFF] font-semibold hover:underline">
                 Create one now
               </Link>
             </p>
@@ -179,6 +170,4 @@ const Login = () => {
       />
     </div>
   );
-};
-
-export default Login;
+}

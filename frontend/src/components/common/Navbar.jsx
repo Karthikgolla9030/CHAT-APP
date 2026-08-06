@@ -1,13 +1,27 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useActiveChat } from '../../context/ActiveChatContext';
-import { MessageSquare, Users, User, LogOut, Compass, Sparkles, Key } from 'lucide-react';
+import {
+  User,
+  LogOut,
+  KeyRound,
+  ChevronDown,
+  Menu,
+  Sun,
+  Shield,
+  Sparkles,
+} from 'lucide-react';
+import { Avatar } from '../ui';
 
-const Navbar = () => {
+export const Navbar = ({ mobileOpen, setMobileOpen }) => {
   const { user, logout } = useAuth();
   const { handleLogoutClear } = useActiveChat();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
   const handleLogout = () => {
     handleLogoutClear();
@@ -15,110 +29,133 @@ const Navbar = () => {
     navigate('/');
   };
 
-  return (
-    <nav className="glass-panel sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between border-b border-slate-800/60">
-      <Link to="/" className="flex items-center gap-2.5 group">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-violet-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-300">
-          <MessageSquare className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-300 tracking-tight">
-            OmniRoute
-          </span>
-          <span className="block text-[10px] uppercase font-semibold tracking-widest text-indigo-400">
-            Realtime Chat
-          </span>
-        </div>
-      </Link>
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
 
-      <div className="flex items-center gap-6">
+  useEffect(() => {
+    const onClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  const displayName = user?.profile?.display_name || user?.username || 'Guest';
+
+  return (
+    <header className="h-15 sticky top-0 z-20 bg-[#101319] border-b border-white/[0.05] flex items-center px-4 sm:px-6 justify-between">
+      {/* Left section: mobile hamburger trigger */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setMobileOpen?.(!mobileOpen)}
+          className="lg:hidden p-2 rounded-xl text-[#9EA4AF] hover:text-white hover:bg-[#1A1F28] transition-colors"
+          aria-label="Toggle menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Small breadcrumb or view context indicator */}
+        <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-[#9EA4AF]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#7BAA82]" />
+          <span>ConnectSphere Network</span>
+        </div>
+      </div>
+
+      {/* Right cluster */}
+      <div className="flex items-center gap-3">
+        {/* Subtle Theme / Utility Toggle Icon */}
+        <button
+          type="button"
+          className="p-2 rounded-xl text-[#9EA4AF] hover:text-white hover:bg-[#1A1F28] transition-colors"
+          aria-label="Theme options"
+          title="Light/Dark toggle"
+        >
+          <Sun className="w-4 h-4" />
+        </button>
+
         {user ? (
           <>
-            <div className="flex items-center gap-1 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800">
+            {user.is_guest && (
               <Link
-                to="/dashboard"
-                className="px-3.5 py-1.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/70 transition-all flex items-center gap-2"
+                to="/claim-account"
+                className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-xl border border-[#D9A441]/40 bg-[#D9A441]/10 text-xs font-medium text-[#D9A441] hover:bg-[#D9A441]/20 transition-colors"
               >
-                <Compass className="w-4 h-4 text-indigo-400" />
-                Dashboard
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Claim Account</span>
               </Link>
-              <Link
-                to="/match"
-                className="px-3.5 py-1.5 rounded-lg text-sm font-medium text-indigo-300 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 transition-all flex items-center gap-2"
-              >
-                <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
-                Find Match
-              </Link>
-              <Link
-                to="/friends"
-                className="px-3.5 py-1.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/70 transition-all flex items-center gap-2"
-              >
-                <Users className="w-4 h-4 text-cyan-400" />
-                Friends
-              </Link>
+            )}
 
-              {user.is_guest && (
-                <Link
-                  to="/claim-account"
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-amber-300 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 transition-all flex items-center gap-1.5 shadow-sm"
-                >
-                  <Key className="w-3.5 h-3.5 text-amber-400" />
-                  Claim Account
-                </Link>
-              )}
-            </div>
+            {/* Account User Dropdown */}
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className="flex items-center gap-2.5 h-9 pl-1 pr-2.5 rounded-full bg-[#14181F] border border-white/[0.08] hover:border-white/15 text-xs text-[#F4F5F7] transition-all duration-200 cursor-pointer"
+              >
+                <Avatar name={displayName} size="sm" />
+                <span className="max-w-[8rem] truncate font-medium">{displayName}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-[#9EA4AF]" />
+              </button>
 
-            <div className="flex items-center gap-3 pl-2 border-l border-slate-800">
-              {!user.is_guest ? (
-                <Link
-                  to="/profile"
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-800/60 transition-all"
-                >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center font-bold text-white text-xs shadow-inner">
-                    {user.username.charAt(0).toUpperCase()}
+              {menuOpen && (
+                <div role="menu" className="menu absolute right-0 top-11 w-56">
+                  <div className="px-3 py-2 mb-1 border-b border-white/[0.06]">
+                    <p className="text-xs font-semibold text-white truncate">{displayName}</p>
+                    <p className="text-[11px] text-[#9EA4AF] mt-0.5">
+                      {user.is_guest ? 'Guest Session' : `@${user.username}`}
+                    </p>
                   </div>
-                  <span className="text-sm font-medium text-slate-200">
-                    {user.profile?.display_name || user.username}
-                  </span>
-                </Link>
-              ) : (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/40 border border-slate-800">
-                  <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center font-bold text-amber-300 text-xs">
-                    G
-                  </div>
-                  <span className="text-xs font-medium text-amber-200">
-                    {user.profile?.display_name || user.username}
-                  </span>
+
+                  {!user.is_guest && (
+                    <Link to="/profile" role="menuitem" className="menu-item">
+                      <User className="w-4 h-4" />
+                      <span>Profile Settings</span>
+                    </Link>
+                  )}
+                  {user.is_guest && (
+                    <Link to="/claim-account" role="menuitem" className="menu-item">
+                      <KeyRound className="w-4 h-4 text-[#D9A441]" />
+                      <span>Claim Account</span>
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleLogout}
+                    className="menu-item text-[#D66B6B] hover:text-[#D66B6B] hover:bg-[#D66B6B]/10"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Log out</span>
+                  </button>
                 </div>
               )}
-
-              <button
-                onClick={handleLogout}
-                className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
             </div>
           </>
         ) : (
-          <div className="flex items-center gap-3">
-            <Link
-              to="/login"
-              className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
-            >
-              Sign In
+          <div className="flex items-center gap-2">
+            <Link to="/login" className="btn btn-ghost btn-sm">
+              Sign in
             </Link>
-            <Link
-              to="/register"
-              className="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl shadow-lg shadow-indigo-500/25 transition-all duration-300 hover:scale-[1.02]"
-            >
+            <Link to="/register" className="btn btn-primary btn-sm">
               Get Started
             </Link>
           </div>
         )}
       </div>
-    </nav>
+    </header>
   );
 };
 
