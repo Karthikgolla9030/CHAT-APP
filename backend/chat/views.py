@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from friends.models import Friendship, BlockedUser
+from common.services.friend import FriendService
 from .models import ChatRoom, Message
 from .serializers import MessageSerializer
 
