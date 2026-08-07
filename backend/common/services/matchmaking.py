@@ -220,8 +220,8 @@ class MatchmakingService:
             u1, u2 = (user, best_partner) if user.id < best_partner.id else (best_partner, user)
             MatchHistory.objects.create(user1=u1, user2=u2, match_score=best_score)
 
-            # Create single active session
-            room = SessionService.create_session(user, best_partner, match_score=best_score)
+            # Create single active random chat session
+            room = SessionService.create_session(user, best_partner, match_score=best_score, room_type='random')
 
             return best_partner, best_score, common_interests, room
 

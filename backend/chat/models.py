@@ -12,9 +12,15 @@ class ChatRoom(models.Model):
         ('blocked', 'Blocked'),
     ]
 
+    ROOM_TYPE_CHOICES = [
+        ('random', 'Random Chat'),
+        ('friend', 'Friend Chat'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rooms_as_user1')
     user2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rooms_as_user2')
+    room_type = models.CharField(max_length=20, choices=ROOM_TYPE_CHOICES, default='random')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     started_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)

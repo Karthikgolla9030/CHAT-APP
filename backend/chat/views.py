@@ -59,19 +59,9 @@ class GetOrCreateFriendRoomView(APIView):
         if is_blocked:
             raise PermissionDenied("Cannot start a chat session. User is blocked.")
 
-        # 3. Retrieve or create room (prevent duplicates by sorting u1, u2)
-        u1, u2 = (request.user, friend) if request.user.id < friend.id else (friend, request.user)
-        room, created = ChatRoom.objects.get_or_create(
-            user1=u1,
-            user2=u2,
-            defaults={'status': 'active'}
-        )
-
-        # If it was ended, change back to active
-        if room.status != 'active':
-            room.status = 'active'
-            room.ended_at = None
-            room.save()
+        # 3. Retrieve or create dedicated permanent friend room (room_type='friend')
+        from common.services.session import SessionService
+        room = SessionService.create_session(request.user, friend, room_type='friend')
 
         return Response({
             'room_id': str(room.id),

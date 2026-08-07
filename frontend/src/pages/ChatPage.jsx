@@ -684,11 +684,31 @@ export default function ChatPage() {
         {chatType === 'random' &&
           (isSearching ? (
             <SearchingOverlay onOpenPrefs={() => setDrawerOpen(true)} onCancel={onCancelSearch} />
+          ) : chatEnded ? (
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => navigate('/match')}
+                variant="secondary"
+                size="md"
+                className="flex-1 gap-1.5"
+              >
+                <Sliders className="w-4 h-4" />
+                <span>Match Preferences</span>
+              </Button>
+              <Button
+                onClick={onNextMatch}
+                variant="primary"
+                size="md"
+                className="flex-1 gap-1.5"
+              >
+                <SkipForward className="w-4 h-4" />
+                <span>Find Next Match</span>
+              </Button>
+            </div>
           ) : (
             <div className="flex items-center gap-3">
               <Button
                 onClick={handleSkip}
-                disabled={chatEnded}
                 variant="danger"
                 size="md"
                 className="flex-1 gap-1.5"
@@ -698,7 +718,6 @@ export default function ChatPage() {
               </Button>
               <Button
                 onClick={onNextMatch}
-                disabled={chatEnded}
                 variant="primary"
                 size="md"
                 className="flex-1 gap-1.5"

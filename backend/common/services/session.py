@@ -15,23 +15,35 @@ RECONNECT_TIMEOUT = 30  # 30 seconds grace period for network glitch reconnect
 
 class SessionService:
     @staticmethod
-    def create_session(user1, user2, match_score=0.0):
+    def create_session(user1, user2, match_score=0.0, room_type='random'):
         """
-        Creates exactly one active ChatRoom and registers session in Redis.
+        Creates an active ChatRoom and registers session in Redis.
+        Random chats always create a new ChatRoom(room_type='random').
+        Friend chats get or create a dedicated permanent ChatRoom(room_type='friend').
         Both users reference the exact same room_id.
         """
         u1, u2 = (user1, user2) if user1.id < user2.id else (user2, user1)
         
-        # Ensure any old room between them is replaced or reused atomically
-        room, created = ChatRoom.objects.get_or_create(
-            user1=u1,
-            user2=u2,
-            defaults={'status': 'active'}
-        )
-        if room.status != 'active':
-            room.status = 'active'
-            room.ended_at = None
-            room.save()
+        if room_type == 'random':
+            # Create a brand new random chat room for this random encounter
+            room = ChatRoom.objects.create(
+                user1=u1,
+                user2=u2,
+                room_type='random',
+                status='active'
+            )
+        else:
+            # Dedicated permanent friend conversation
+            room, _ = ChatRoom.objects.get_or_create(
+                user1=u1,
+                user2=u2,
+                room_type='friend',
+                defaults={'status': 'active'}
+            )
+            if room.status != 'active':
+                room.status = 'active'
+                room.ended_at = None
+                room.save()
 
         redis_c = get_redis_client()
         room_id_str = str(room.id)
@@ -41,6 +53,7 @@ class SessionService:
             'room_id': room_id_str,
             'user1_id': u1.id,
             'user2_id': u2.id,
+            'room_type': room.room_type,
             'status': 'active',
             'created_at': time.time(),
             'match_score': match_score
@@ -69,8 +82,8 @@ class SessionService:
         Atomically end an active session:
         1. Set ChatRoom.status = 'ended'
         2. Delete Redis keys for room and users
-        3. Delete temporary messages IF users are NOT friends (Req 3)
-        4. Broadcast 'chat_ended' to the WS room group
+        3. Delete temporary messages IF room is a random chat (Req 3)
+        4. Broadcast 'chat_ended' to the WS room group AND individual user groups
         5. Clear presence state
         """
         try:
@@ -99,29 +112,37 @@ class SessionService:
         redis_c.delete(f"typing:{room_id_str}:{u1_id}")
         redis_c.delete(f"typing:{room_id_str}:{u2_id}")
 
-        # Check if users are friends (Req 3 & Req 4)
-        is_friend = Friendship.objects.filter(
-            Q(user1_id=u1_id, user2_id=u2_id) | Q(user1_id=u2_id, user2_id=u1_id)
-        ).exists()
-
-        if not is_friend:
-            # Random chat messages are temporary -> Purge immediately from DB
+        # Purge temporary messages IF random chat (Req 3 & Req 5)
+        if room.room_type == 'random':
             Message.objects.filter(room=room).delete()
             logger.info(f"Purged temporary messages for random chat room {room_id_str}")
 
-        # Broadcast WS event to close room group & notify both users
+        # Broadcast WS event to room group AND individual user groups so BOTH clients terminate synchronously
         try:
             channel_layer = get_channel_layer()
             if channel_layer:
-                group_name = f"chat_{room_id_str}"
-                async_to_sync(channel_layer.group_send)(
-                    group_name,
-                    {
-                        'type': 'broadcast_chat_ended',
+                ended_payload = {
+                    'type': 'broadcast_chat_ended',
+                    'room_id': room_id_str,
+                    'ended_by': ended_by_user_id,
+                    'reason': reason
+                }
+                # 1. Broadcast to room group
+                async_to_sync(channel_layer.group_send)(f"chat_{room_id_str}", ended_payload)
+
+                # 2. Broadcast to individual user groups
+                user_notice = {
+                    'type': 'match_notification',
+                    'data': {
+                        'type': 'chat_ended',
+                        'room_id': room_id_str,
                         'ended_by': ended_by_user_id,
                         'reason': reason
                     }
-                )
+                }
+                async_to_sync(channel_layer.group_send)(f"user_{u1_id}", user_notice)
+                async_to_sync(channel_layer.group_send)(f"user_{u2_id}", user_notice)
+
         except Exception as e:
             logger.error(f"Error broadcasting chat_ended for room {room_id_str}: {e}")
 

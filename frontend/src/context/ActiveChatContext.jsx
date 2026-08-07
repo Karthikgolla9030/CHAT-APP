@@ -196,11 +196,15 @@ export const ActiveChatProvider = ({ children }) => {
   // ─── Skip: end chat, go to preferences page ──────────────────────────
   const handleSkip = () => {
     if (randomWsRef.current && randomWsRef.current.readyState === WebSocket.OPEN) {
-      randomWsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
+      try {
+        randomWsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
+      } catch (_) {}
     }
-    clearRandomChat();
-    stopMatchmaking();
-    navigate('/match', { state: { autoStart: false } });
+    setTimeout(() => {
+      clearRandomChat();
+      stopMatchmaking();
+      navigate('/match', { state: { autoStart: false } });
+    }, 50);
   };
 
   // ─── Next Match: end chat, start searching ───────────────────────────
@@ -208,10 +212,14 @@ export const ActiveChatProvider = ({ children }) => {
     if (isSearching) return;
 
     if (randomWsRef.current && randomWsRef.current.readyState === WebSocket.OPEN) {
-      randomWsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
+      try {
+        randomWsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
+      } catch (_) {}
     }
-    clearRandomChat();
-    startMatchmaking(prefs);
+    setTimeout(() => {
+      clearRandomChat();
+      startMatchmaking(prefs);
+    }, 50);
   };
 
   // ─── Connect to random room ──────────────────────────────────────────
@@ -262,6 +270,8 @@ export const ActiveChatProvider = ({ children }) => {
           );
         } else if (data.type === 'chat_ended') {
           setRandomChatEnded(true);
+          setRandomPartnerTyping(false);
+          setPartnerDisconnected(false);
         } else if (data.type === 'partner_disconnected') {
           setPartnerDisconnected(true);
         } else if (data.type === 'partner_reconnected') {
