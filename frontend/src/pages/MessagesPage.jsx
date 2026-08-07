@@ -9,7 +9,7 @@ import { Card, Avatar, Button, Badge } from '../components/ui';
 export default function MessagesPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { randomRoomId, friendRoomId, randomPartner, friendPartner, randomInterests, randomChatEnded } = useActiveChat();
+  const { randomRoomId, friendRoomId, randomPartner, friendPartner, randomInterests, randomChatEnded, validateActiveSessionWithRedis } = useActiveChat();
 
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +19,7 @@ export default function MessagesPage() {
   const activePartner = isRandomActive ? randomPartner : friendPartner;
 
   useEffect(() => {
+    validateActiveSessionWithRedis();
     const fetchFriendsForMessages = async () => {
       try {
         setLoading(true);

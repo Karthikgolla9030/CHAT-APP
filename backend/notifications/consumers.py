@@ -18,3 +18,6 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 
     async def send_notification(self, event):
         await self.send_json({'type': 'notification', 'data': event['data']})
+
+    async def match_notification(self, event):
+        await self.send_json(event['data'])

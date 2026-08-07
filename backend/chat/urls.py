@@ -1,9 +1,10 @@
 from django.urls import path
-from .views import RoomMessagesView, GetOrCreateFriendRoomView, RoomDetailView, SkipRoomView
+from .views import RoomMessagesView, GetOrCreateFriendRoomView, RoomDetailView, SkipRoomView, ActiveSessionView
 
 urlpatterns = [
     path('rooms/<uuid:room_id>/', RoomDetailView.as_view(), name='room-detail'),
     path('rooms/<uuid:room_id>/messages/', RoomMessagesView.as_view(), name='room-messages'),
     path('rooms/<uuid:room_id>/skip/', SkipRoomView.as_view(), name='room-skip'),
+    path('active-session/', ActiveSessionView.as_view(), name='active-session'),
     path('friends/chat/', GetOrCreateFriendRoomView.as_view(), name='friends-chat'),
 ]

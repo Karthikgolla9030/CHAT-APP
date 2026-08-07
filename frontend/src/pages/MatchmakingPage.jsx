@@ -11,7 +11,7 @@ export default function MatchmakingPage() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isSearching, searchStatus, startMatchmaking, stopMatchmaking, randomRoomId, randomPartner, randomInterests, randomChatEnded } = useActiveChat();
+  const { isSearching, searchStatus, startMatchmaking, stopMatchmaking, randomRoomId, randomPartner, randomInterests, randomChatEnded, validateActiveSessionWithRedis } = useActiveChat();
   const { activePrefs, prefsInitialized, applyPrefs } = useMatchPreferences();
 
   const [gender, setGender] = useState(
@@ -52,6 +52,7 @@ export default function MatchmakingPage() {
   };
 
   useEffect(() => {
+    validateActiveSessionWithRedis();
     if (location.state?.autoStart && prefsInitialized) {
       startSearch();
     }

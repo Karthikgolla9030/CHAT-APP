@@ -113,3 +113,29 @@ class SkipRoomView(APIView):
         from common.services.session import SessionService
         SessionService.end_session(str(room.id), ended_by_user_id=request.user.id, reason='skip')
         return Response({'status': 'ended', 'room_id': str(room.id)})
+
+
+class ActiveSessionView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from common.services.session import SessionService
+        room_id_str = SessionService.get_user_active_room_id(request.user.id)
+        if not room_id_str:
+            return Response({'has_active_session': False, 'room_id': None})
+
+        try:
+            room = ChatRoom.objects.get(id=room_id_str, status='active', room_type='random')
+            partner = room.user2 if room.user1 == request.user else room.user1
+            return Response({
+                'has_active_session': True,
+                'room_id': str(room.id),
+                'partner': {
+                    'id': partner.id,
+                    'username': partner.username,
+                    'display_name': getattr(getattr(partner, 'profile', None), 'display_name', partner.username),
+                    'avatar': partner.profile.avatar.url if getattr(getattr(partner, 'profile', None), 'avatar', None) else None,
+                }
+            })
+        except ChatRoom.DoesNotExist:
+            return Response({'has_active_session': False, 'room_id': None})

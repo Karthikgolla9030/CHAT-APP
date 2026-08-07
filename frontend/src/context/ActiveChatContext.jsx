@@ -34,6 +34,26 @@ export const ActiveChatProvider = ({ children }) => {
   const matchSessionIdRef = useRef(null);
   const matchWsRef = useRef(null);
 
+  // ─── Validate Redis active session (never trust stale local state) ──
+  const validateActiveSessionWithRedis = useCallback(async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      clearRandomChat();
+      return false;
+    }
+    try {
+      const res = await api.get('/chat/active-session/');
+      if (!res.data.has_active_session) {
+        clearRandomChat();
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('Failed to validate active session with Redis:', err);
+      return false;
+    }
+  }, []);
+
   // ─── Clear helpers ───────────────────────────────────────────────────
   const clearRandomChat = () => {
     if (randomWsRef.current) {
@@ -422,6 +442,7 @@ export const ActiveChatProvider = ({ children }) => {
         randomWsRef,
         connectRandomRoom,
         sendRandomMessage,
+        validateActiveSessionWithRedis,
         clearRandomChat,
         setRandomMessages,
         setRandomPartnerTyping,
