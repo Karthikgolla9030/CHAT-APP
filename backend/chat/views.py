@@ -21,15 +21,9 @@ class RoomMessagesView(generics.ListAPIView):
         if self.request.user.id not in [room.user1_id, room.user2_id]:
             raise PermissionDenied("You are not a member of this chat room.")
 
-        # Strict isolation: Random Chat history is deleted upon room termination.
-        # If the room is ended, check if they are currently friends.
-        if room.status == 'ended':
-            is_friend = Friendship.objects.filter(
-                Q(user1_id=room.user1_id, user2_id=room.user2_id) |
-                Q(user1_id=room.user2_id, user2_id=room.user1_id)
-            ).exists()
-            if not is_friend:
-                raise PermissionDenied("This random chat room has ended and temporary messages were purged.")
+        # Strict isolation: Random Chat history for room_type='random' is purged on room termination.
+        if room.status == 'ended' and room.room_type == 'random':
+            raise PermissionDenied("This random chat room has ended and temporary messages were purged.")
 
         return Message.objects.filter(room=room).order_by('created_at')
 
