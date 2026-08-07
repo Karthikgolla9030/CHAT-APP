@@ -1,4 +1,7 @@
 import json
+import time
+import uuid
+import logging
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.utils import timezone
@@ -6,24 +9,42 @@ from .models import ChatRoom, Message
 from common.services.session import SessionService
 from common.services.chat import ChatService
 from common.services.presence import PresenceService, STATUS_MATCHED, STATUS_OFFLINE
+from common.redis_client import get_redis_client
+
+logger = logging.getLogger(__name__)
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.user = self.scope.get('user')
         self.room_id_str = str(self.scope['url_route']['kwargs']['room_id'])
         self.explicit_disconnect = False
+        self.socket_id = str(uuid.uuid4())
+        self.connect_time = time.time()
 
         if not self.user or self.user.is_anonymous:
+            logger.info(f"[WS_CONNECT_REJECT] Socket ID: {self.socket_id} | Reason: Anonymous")
             await self.close(code=4001)
             return
 
         self.room = await self.get_room()
         is_member = await self.check_membership()
         if not self.room or not is_member:
+            logger.info(f"[WS_CONNECT_REJECT] Socket ID: {self.socket_id} | User ID: {self.user.id} | Room ID: {self.room_id_str} | Reason: Not a member or room ended")
             await self.close(code=4003)
             return
 
         self.room_group = f"chat_{self.room_id_str}"
+        
+        # Track socket count
+        redis_c = get_redis_client()
+        redis_c.sadd(f"debug_user_sockets:{self.user.id}", self.socket_id)
+        redis_c.sadd(f"debug_room_sockets:{self.room_id_str}", self.socket_id)
+        user_socket_count = redis_c.scard(f"debug_user_sockets:{self.user.id}")
+        room_socket_count = redis_c.scard(f"debug_room_sockets:{self.room_id_str}")
+
+        logger.info(f"[GROUP_ADD] Timestamp: {time.time():.3f} | User ID: {self.user.id} | Channel Name: {self.channel_name} | Group Name: {self.room_group} | Room ID: {self.room_id_str} | Event Type: connect")
+        logger.info(f"[WS_CONNECT] Socket ID: {self.socket_id} | User ID: {self.user.id} | Room ID: {self.room_id_str} | Connection Time: {self.connect_time:.3f} | Total active sockets for that user: {user_socket_count} | Total sockets in that room: {room_socket_count}")
+
         await self.channel_layer.group_add(self.room_group, self.channel_name)
         await self.accept()
 
@@ -31,21 +52,39 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await database_sync_to_async(SessionService.handle_reconnect)(self.room_id_str, self.user.id)
 
     async def disconnect(self, close_code):
+        duration = time.time() - getattr(self, 'connect_time', time.time())
+        logger.info(f"[WS_DISCONNECT] Socket ID: getattr(self, 'socket_id', 'unknown') | Reason: disconnect | Close Code: {close_code} | Duration: {duration:.3f}s")
+        
+        if hasattr(self, 'user') and self.user.id:
+            redis_c = get_redis_client()
+            redis_c.srem(f"debug_user_sockets:{self.user.id}", getattr(self, 'socket_id', ''))
+            if hasattr(self, 'room_id_str'):
+                redis_c.srem(f"debug_room_sockets:{self.room_id_str}", getattr(self, 'socket_id', ''))
+        
         if hasattr(self, 'room_group'):
+            logger.info(f"[GROUP_DISCARD] Timestamp: {time.time():.3f} | User ID: {getattr(self.user, 'id', 'unknown')} | Channel Name: {self.channel_name} | Group Name: {self.room_group} | Room ID: {getattr(self, 'room_id_str', 'unknown')} | Event Type: disconnect")
             await self.channel_layer.group_discard(self.room_group, self.channel_name)
 
         if not self.explicit_disconnect and hasattr(self, 'room_id_str') and hasattr(self, 'user') and self.user.id:
             # Trigger 30-second reconnection grace period for unexpected disconnects
             await database_sync_to_async(SessionService.handle_disconnect)(self.room_id_str, self.user.id)
 
+    async def send_json(self, content, close=False):
+        logger.info(f"[WS_OUTGOING] Socket ID: {getattr(self, 'socket_id', 'unknown')} | Channel Name: {self.channel_name} | Room ID: {getattr(self, 'room_id_str', 'unknown')} | Receiver User ID: {getattr(self.user, 'id', 'unknown')} | Event Type: {content.get('type')} | Timestamp: {time.time():.3f}")
+        return await super().send_json(content, close=close)
+
     async def receive_json(self, content):
         msg_type = content.get('type')
+        logger.info(f"[WS_INCOMING] Socket ID: {self.socket_id} | Channel Name: {self.channel_name} | Room ID: {self.room_id_str} | User ID: {self.user.id} | Message ID: N/A | Event Type: {msg_type} | Timestamp: {time.time():.3f}")
 
         if msg_type == 'chat_message':
             text = content.get('message', '').strip()
             if text:
                 try:
+                    logger.info(f"[FLOW_TRACE] receive_json -> save_message | Room: {self.room_id_str} | Timestamp: {time.time():.3f}")
                     msg_obj = await database_sync_to_async(ChatService.save_message)(self.room, self.user, text)
+                    logger.info(f"[FLOW_TRACE] save_message -> group_send | Room: {self.room_id_str} | Timestamp: {time.time():.3f}")
+                    logger.info(f"[GROUP_SEND] Timestamp: {time.time():.3f} | User ID: {self.user.id} | Channel Name: {self.channel_name} | Group Name: {self.room_group} | Room ID: {self.room_id_str} | Event Type: broadcast_message")
                     await self.channel_layer.group_send(
                         self.room_group,
                         {
@@ -89,6 +128,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 )
 
         elif msg_type == 'skip_chat':
+            logger.info(f"[FLOW_TRACE_SKIP] Frontend click -> receive_json | Socket: {self.socket_id} | Timestamp: {time.time():.3f}")
             self.explicit_disconnect = True
             await database_sync_to_async(SessionService.end_session)(
                 self.room_id_str, ended_by_user_id=self.user.id, reason='skip'
@@ -96,6 +136,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def broadcast_message(self, event):
         msg = event['message']
+        logger.info(f"[FLOW_TRACE] broadcast_message -> send_json | Room: {self.room_id_str} | Receiver: {self.user.id} | Timestamp: {time.time():.3f}")
         if isinstance(msg, dict) and '_type' in msg:
             await self.send_json({'type': msg['_type'], 'data': msg})
         else:
@@ -109,11 +150,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json({'type': 'mark_seen', 'message_id': event['message_id'], 'user_id': event['user_id']})
 
     async def broadcast_chat_ended(self, event):
+        logger.info(f"[FLOW_TRACE_SKIP] broadcast_chat_ended -> send_json | Socket: {self.socket_id} | Timestamp: {time.time():.3f}")
         await self.send_json({
             'type': 'chat_ended',
             'ended_by': event.get('ended_by'),
             'reason': event.get('reason', 'skip')
         })
+        logger.info(f"[FLOW_TRACE_SKIP] send_json -> close() | Socket: {self.socket_id} | Timestamp: {time.time():.3f}")
         await self.close(code=4003)
 
     async def broadcast_partner_disconnected(self, event):

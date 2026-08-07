@@ -14,13 +14,21 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    config.metadata = { startTime: performance.now() };
     return config;
   },
   (error) => Promise.reject(error)
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config.metadata) {
+      const endTime = performance.now();
+      const duration = endTime - response.config.metadata.startTime;
+      console.log(`[API_TRACE] [SUCCESS] ${response.config.method.toUpperCase()} ${response.config.url} | Start: ${response.config.metadata.startTime.toFixed(2)}ms | End: ${endTime.toFixed(2)}ms | Duration: ${duration.toFixed(2)}ms`);
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -41,6 +49,11 @@ api.interceptors.response.use(
           window.location.href = '/login';
         }
       }
+    }
+    if (error.config && error.config.metadata) {
+      const endTime = performance.now();
+      const duration = endTime - error.config.metadata.startTime;
+      console.log(`[API_TRACE] [ERROR] ${error.config.method.toUpperCase()} ${error.config.url} | Start: ${error.config.metadata.startTime.toFixed(2)}ms | End: ${endTime.toFixed(2)}ms | Duration: ${duration.toFixed(2)}ms`);
     }
     return Promise.reject(error);
   }

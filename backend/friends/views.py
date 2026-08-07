@@ -4,6 +4,10 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from asgiref.sync import async_to_sync
+import time
+import logging
+
+logger = logging.getLogger(__name__)
 from channels.layers import get_channel_layer
 from .models import FriendRequest, Friendship, BlockedUser
 from .serializers import FriendRequestSerializer, FriendshipSerializer
@@ -19,6 +23,7 @@ def _push_to_chat_room(room_id, payload):
     if channel_layer is None:
         return
     group_name = f"chat_{room_id}"
+    logger.info(f"[FLOW_TRACE_FRIEND] _push_to_chat_room | Room: {room_id} | Payload: {payload['_type']} | Timestamp: {time.time():.3f}")
     async_to_sync(channel_layer.group_send)(group_name, {
         'type': 'broadcast_message',
         'message': payload,
@@ -85,6 +90,7 @@ class FriendRequestListCreateView(APIView):
             return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
         try:
+            logger.info(f"[FLOW_TRACE_FRIEND] Frontend Send Request API Hit | Sender: {request.user.id} | Timestamp: {time.time():.3f}")
             res = FriendService.send_request(request.user, target_user)
         except ValueError as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -106,6 +112,7 @@ class FriendRequestListCreateView(APIView):
                 'sender_username': request.user.username,
                 'receiver_id': target_user.id,
             }
+            logger.info(f"[FLOW_TRACE_FRIEND] Send Request -> _push_to_chat_room | Sender: {request.user.id} | Timestamp: {time.time():.3f}")
             _push_to_chat_room(room_id, payload)
 
         return Response(res, status=status.HTTP_200_OK if res['status'] == 'friends' else status.HTTP_201_CREATED)
@@ -117,6 +124,7 @@ class AcceptFriendRequestView(APIView):
     def post(self, request, pk):
         room_id = request.data.get('room_id')
         try:
+            logger.info(f"[FLOW_TRACE_FRIEND] Frontend Accept Request API Hit | Accepter: {request.user.id} | Timestamp: {time.time():.3f}")
             res = FriendService.accept_request(request.user, pk)
         except ValueError as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_404_NOT_FOUND)
@@ -127,6 +135,7 @@ class AcceptFriendRequestView(APIView):
             'user_id': res['sender_id'],
             'partner_id': request.user.id,
         }
+        logger.info(f"[FLOW_TRACE_FRIEND] Accept Request -> _push_to_chat_room | Accepter: {request.user.id} | Timestamp: {time.time():.3f}")
         _push_to_chat_room(room_id, payload)
 
         return Response(res)

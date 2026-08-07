@@ -113,6 +113,7 @@ class SessionService:
             u2_id = room.user2_id
 
             # Clean Redis keys
+            logger.info(f"[FLOW_TRACE_SKIP] SessionManager -> Redis delete | Room: {room_id_str} | Timestamp: {time.time():.3f}")
             redis_c.delete(f"session:{room_id_str}")
             redis_c.delete(f"user_session:{u1_id}")
             redis_c.delete(f"user_session:{u2_id}")
@@ -136,6 +137,7 @@ class SessionService:
                         'ended_by': ended_by_user_id,
                         'reason': reason
                     }
+                    logger.info(f"[FLOW_TRACE_SKIP] SessionManager -> group_send chat_ended | Room: {room_id_str} | Timestamp: {time.time():.3f}")
                     async_to_sync(channel_layer.group_send)(f"chat_{room_id_str}", ended_payload)
 
                     user_notice = {

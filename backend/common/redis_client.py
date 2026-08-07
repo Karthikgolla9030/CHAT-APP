@@ -8,8 +8,10 @@ logger = logging.getLogger(__name__)
 
 _redis_client = None
 
+_redis_pool = None
+
 def get_redis_client():
-    global _redis_client
+    global _redis_client, _redis_pool
     if _redis_client is not None:
         return _redis_client
 
@@ -17,7 +19,18 @@ def get_redis_client():
     if redis_url:
         try:
             import redis
-            _redis_client = redis.Redis.from_url(redis_url, decode_responses=True, socket_timeout=3.0, socket_connect_timeout=3.0)
+            if _redis_pool is None:
+                _redis_pool = redis.ConnectionPool.from_url(
+                    redis_url,
+                    decode_responses=True,
+                    max_connections=50,
+                    socket_keepalive=True,
+                    health_check_interval=30,
+                    socket_timeout=10.0,
+                    socket_connect_timeout=5.0,
+                    retry_on_timeout=True
+                )
+            _redis_client = redis.Redis(connection_pool=_redis_pool)
             _redis_client.ping()
             return _redis_client
         except Exception as e:

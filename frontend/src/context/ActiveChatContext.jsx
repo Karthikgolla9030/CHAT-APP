@@ -160,9 +160,12 @@ export const ActiveChatProvider = ({ children }) => {
       : `${WS_BASE_URL}/match/?token=${token}`;
 
     const ws = new WebSocket(socketUrl);
+    ws._socketId = `match_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    console.log(`[FRONTEND_WS_CREATE] new WebSocket | Socket ID: ${ws._socketId} | Room/Queue: MATCH | Timestamp: ${performance.now().toFixed(2)}ms`);
     matchWsRef.current = ws;
 
     ws.onopen = () => {
+      console.log(`[FRONTEND_WS_ONOPEN] Socket ID: ${ws._socketId} | Timestamp: ${performance.now().toFixed(2)}ms`);
       if (matchSessionIdRef.current !== sessionId) {
         ws.close();
         return;
@@ -185,6 +188,7 @@ export const ActiveChatProvider = ({ children }) => {
 
       try {
         const data = JSON.parse(event.data);
+        console.log(`[FRONTEND_WS_INCOMING] onmessage | Socket ID: ${ws._socketId} | Room ID: MATCH | Event Type: ${data.type} | Timestamp: ${performance.now().toFixed(2)}ms`);
         if (data.type === 'match_found') {
           if (matchWsRef.current) {
             try { matchWsRef.current.close(); } catch (_) {}
@@ -221,7 +225,8 @@ export const ActiveChatProvider = ({ children }) => {
       setSearchStatus('Connection error. Retrying...');
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+      console.log(`[FRONTEND_WS_ONCLOSE] Socket ID: ${ws._socketId} | Reason: ${event.reason} | Close Code: ${event.code} | Timestamp: ${performance.now().toFixed(2)}ms`);
       if (matchSessionIdRef.current === sessionId) {
         matchSessionIdRef.current = null;
         setIsSearching(false);
@@ -238,7 +243,8 @@ export const ActiveChatProvider = ({ children }) => {
     const text = content.trim();
 
     if (randomWsRef.current && randomWsRef.current.readyState === WebSocket.OPEN) {
-      randomWsRef.current.send(JSON.stringify({ type: 'chat_message', message: text }));
+      console.log(`[FRONTEND_WS_OUTGOING] ws.send | Socket ID: ${randomWsRef.current._socketId} | Room ID: ${randomRoomId} | Event Type: chat_message | Timestamp: ${performance.now().toFixed(2)}ms`);
+      randomWsRef.current.send(JSON.stringify({ type: 'chat_message', message: text, _clientTimestamp: performance.now() }));
     } else {
       pendingSendQueueRef.current.push({ type: 'chat_message', message: text });
       if (randomRoomId && (!randomWsRef.current || randomWsRef.current.readyState === WebSocket.CLOSED)) {
@@ -290,6 +296,7 @@ export const ActiveChatProvider = ({ children }) => {
       if (partnerData && !randomPartner) setRandomPartner(partnerData);
       if (interests && interests.length > 0 && randomInterests.length === 0) setRandomInterests(interests);
       if (randomWsRef.current && (randomWsRef.current.readyState === WebSocket.OPEN || randomWsRef.current.readyState === WebSocket.CONNECTING)) {
+        console.log(`[FRONTEND_LIFECYCLE] connectRandomRoom | Socket ID: ${randomWsRef.current._socketId} | Room ID: ${roomId} | Status: REUSED | Timestamp: ${performance.now().toFixed(2)}ms`);
         return;
       }
     } else {
@@ -327,9 +334,12 @@ export const ActiveChatProvider = ({ children }) => {
       : `${WS_BASE_URL}/chat/${roomId}/?token=${token}`;
 
     const ws = new WebSocket(socketUrl);
+    ws._socketId = `random_${roomId}_${Date.now()}`;
+    console.log(`[FRONTEND_WS_CREATE] new WebSocket | Socket ID: ${ws._socketId} | Room ID: ${roomId} | Status: NEW | Timestamp: ${performance.now().toFixed(2)}ms`);
     randomWsRef.current = ws;
 
     ws.onopen = () => {
+      console.log(`[FRONTEND_WS_ONOPEN] Socket ID: ${ws._socketId} | Room ID: ${roomId} | Timestamp: ${performance.now().toFixed(2)}ms`);
       // Flush any queued messages that were sent while connecting
       while (pendingSendQueueRef.current.length > 0) {
         const msg = pendingSendQueueRef.current.shift();
@@ -344,6 +354,7 @@ export const ActiveChatProvider = ({ children }) => {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log(`[FRONTEND_WS_INCOMING] onmessage | Socket ID: ${ws._socketId} | Room ID: ${roomId} | Message ID: ${data.message?.id || 'N/A'} | Event Type: ${data.type} | Timestamp: ${performance.now().toFixed(2)}ms`);
 
         if (data.type === 'chat_message') {
           setRandomMessages((prev) => {
@@ -378,6 +389,7 @@ export const ActiveChatProvider = ({ children }) => {
     };
 
     ws.onclose = (event) => {
+      console.log(`[FRONTEND_WS_ONCLOSE] Socket ID: ${ws._socketId} | Room ID: ${roomId} | Reason: ${event.reason} | Close Code: ${event.code} | Timestamp: ${performance.now().toFixed(2)}ms`);
       if (event.code === 4003 || event.code === 4001) {
         clearRandomChat();
         if (window.location.pathname.includes(`/chat/${roomId}`)) {
@@ -401,6 +413,7 @@ export const ActiveChatProvider = ({ children }) => {
     if (friendRoomId === roomId) {
       if (friendPartner !== partnerData) setFriendPartner(partnerData);
       if (friendWsRef.current && (friendWsRef.current.readyState === WebSocket.OPEN || friendWsRef.current.readyState === WebSocket.CONNECTING)) {
+        console.log(`[FRONTEND_LIFECYCLE] connectFriendRoom | Socket ID: ${friendWsRef.current._socketId} | Room ID: ${roomId} | Status: REUSED | Timestamp: ${performance.now().toFixed(2)}ms`);
         return;
       }
     } else {
@@ -430,11 +443,18 @@ export const ActiveChatProvider = ({ children }) => {
       : `${WS_BASE_URL}/chat/${roomId}/?token=${token}`;
 
     const ws = new WebSocket(socketUrl);
+    ws._socketId = `friend_${roomId}_${Date.now()}`;
+    console.log(`[FRONTEND_WS_CREATE] new WebSocket | Socket ID: ${ws._socketId} | Room ID: ${roomId} | Status: NEW | Timestamp: ${performance.now().toFixed(2)}ms`);
     friendWsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log(`[FRONTEND_WS_ONOPEN] Socket ID: ${ws._socketId} | Room ID: ${roomId} | Timestamp: ${performance.now().toFixed(2)}ms`);
+    };
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log(`[FRONTEND_WS_INCOMING] onmessage | Socket ID: ${ws._socketId} | Room ID: ${roomId} | Message ID: ${data.message?.id || 'N/A'} | Event Type: ${data.type} | Timestamp: ${performance.now().toFixed(2)}ms`);
 
         if (data.type === 'chat_message') {
           setFriendMessages((prev) => {
@@ -459,6 +479,10 @@ export const ActiveChatProvider = ({ children }) => {
       } catch (err) {
         console.error('Error in friend WS:', err);
       }
+    };
+    
+    ws.onclose = (event) => {
+      console.log(`[FRONTEND_WS_ONCLOSE] Socket ID: ${ws._socketId} | Room ID: ${roomId} | Reason: ${event.reason} | Close Code: ${event.code} | Timestamp: ${performance.now().toFixed(2)}ms`);
     };
   };
 

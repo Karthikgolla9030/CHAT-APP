@@ -1,4 +1,5 @@
 import logging
+import time
 from django.utils import timezone
 from chat.models import ChatRoom, Message
 from common.redis_client import get_redis_client
@@ -12,6 +13,7 @@ class ChatService:
         if room.status == 'ended':
             raise ValueError("Cannot send message in an ended room.")
 
+        t_start = time.time()
         msg = Message.objects.create(
             room=room,
             sender=sender,
@@ -21,6 +23,8 @@ class ChatService:
         )
         room.last_activity = timezone.now()
         room.save(update_fields=['last_activity'])
+        t_end = time.time()
+        logger.info(f"[DB_LATENCY] save_message | Room: {room.id} | Sender: {sender.id} | Duration: {(t_end - t_start):.3f}s")
         return msg
 
     @staticmethod

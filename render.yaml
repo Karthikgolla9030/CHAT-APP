@@ -37,3 +37,8 @@ databases:
   - name: omniroute-db
     databaseName: omniroute
     user: omniroute_user
+
+  - type: redis
+    name: omniroute-redis
+    plan: free # Note: Render removed free redis, standard will be provisioned depending on account tier.
+    ipAllowList: [] # Only allow internal Render services

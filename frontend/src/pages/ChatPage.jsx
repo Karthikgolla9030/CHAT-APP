@@ -453,6 +453,13 @@ export default function ChatPage() {
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
 
   useEffect(() => {
+    console.log(`[FRONTEND_LIFECYCLE] ChatPage mount | Room ID: ${roomId} | Timestamp: ${performance.now().toFixed(2)}ms`);
+    return () => {
+      console.log(`[FRONTEND_LIFECYCLE] ChatPage unmount | Room ID: ${roomId} | Timestamp: ${performance.now().toFixed(2)}ms`);
+    };
+  }, [roomId]);
+
+  useEffect(() => {
     const resolveChat = async () => {
       setChatType('loading');
 
@@ -514,10 +521,12 @@ export default function ChatPage() {
 
   useEffect(() => {
     scrollToBottom();
+    console.log(`[FRONTEND_LIFECYCLE] ChatPage rendered messages | Room ID: ${roomId} | Msg Count: ${messages.length} | Timestamp: ${performance.now().toFixed(2)}ms`);
   }, [messages, isPartnerTyping]);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
+    console.log(`[FRONTEND_ACTION] handleSendMessage submit | Timestamp: ${performance.now().toFixed(2)}ms`);
     if (!inputMessage.trim() || chatEnded) return;
     const text = inputMessage.trim();
     setInputMessage('');
