@@ -455,6 +455,26 @@ export default function ChatPage() {
   useEffect(() => {
     const resolveChat = async () => {
       setChatType('loading');
+
+      // 1. Check if this is the active random chat in global ActiveChatContext
+      if (randomRoomId && randomRoomId === roomId) {
+        setChatType('random');
+        if (randomPartner) setPartnerInfo(randomPartner);
+        else if (location.state?.partner) setPartnerInfo(location.state.partner);
+        if (randomInterests && randomInterests.length > 0) setCommonInterests(randomInterests);
+        else if (location.state?.common_interests) setCommonInterests(location.state.common_interests);
+        return;
+      }
+
+      // 2. Check if this is the active friend chat in global ActiveChatContext
+      if (friendRoomId && friendRoomId === roomId) {
+        setChatType('friend');
+        if (friendPartner) setPartnerInfo(friendPartner);
+        else if (location.state?.partner) setPartnerInfo(location.state.partner);
+        return;
+      }
+
+      // 3. Check explicit route location.state
       if (location.state?.isFriendChat) {
         setChatType('friend');
         if (location.state.partner) setPartnerInfo(location.state.partner);
@@ -466,16 +486,18 @@ export default function ChatPage() {
         if (location.state.common_interests) setCommonInterests(location.state.common_interests);
         return;
       }
+
+      // 4. Fallback: API check
       try {
         const res = await api.get(`/chat/rooms/${roomId}/`);
         setPartnerInfo(res.data.partner);
-        setChatType(res.data.is_friend_chat ? 'friend' : 'random');
+        setChatType(res.data.room_type === 'friend' || res.data.is_friend_chat ? 'friend' : 'random');
       } catch {
         setChatType(null);
       }
     };
     resolveChat();
-  }, [roomId, location.state]);
+  }, [roomId, location.state, randomRoomId, friendRoomId, randomPartner, friendPartner, randomInterests]);
 
   useEffect(() => {
     if (chatType === 'random' && partnerInfo) {

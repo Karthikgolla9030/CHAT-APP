@@ -85,16 +85,14 @@ class RoomDetailView(APIView):
         # Find the partner
         partner = room.user2 if room.user1 == request.user else room.user1
 
-        # Check if they are friends
-        is_friend = Friendship.objects.filter(
-            Q(user1_id=room.user1_id, user2_id=room.user2_id) |
-            Q(user1_id=room.user2_id, user2_id=room.user1_id)
-        ).exists()
+        # Is this room a dedicated friend chat or a random chat?
+        is_friend_chat = (room.room_type == 'friend')
 
         return Response({
             'room_id': str(room.id),
+            'room_type': room.room_type,
             'status': room.status,
-            'is_friend_chat': is_friend,
+            'is_friend_chat': is_friend_chat,
             'partner': {
                 'id': partner.id,
                 'username': partner.username,

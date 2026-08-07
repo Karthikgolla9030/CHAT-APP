@@ -224,13 +224,19 @@ export const ActiveChatProvider = ({ children }) => {
 
   // ─── Connect to random room ──────────────────────────────────────────
   const connectRandomRoom = async (roomId, partnerData, interests) => {
-    if (randomRoomId === roomId) return;
-
-    clearRandomChat();
+    if (randomRoomId === roomId) {
+      if (partnerData && !randomPartner) setRandomPartner(partnerData);
+      if (interests && interests.length > 0 && randomInterests.length === 0) setRandomInterests(interests);
+      if (randomWsRef.current && (randomWsRef.current.readyState === WebSocket.OPEN || randomWsRef.current.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+    } else {
+      clearRandomChat();
+    }
 
     setRandomRoomId(roomId);
-    setRandomPartner(partnerData);
-    setRandomInterests(interests || []);
+    if (partnerData) setRandomPartner(partnerData);
+    if (interests) setRandomInterests(interests);
 
     try {
       const res = await api.get(`/chat/rooms/${roomId}/messages/`);

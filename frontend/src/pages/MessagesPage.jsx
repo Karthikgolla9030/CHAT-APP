@@ -9,7 +9,7 @@ import { Card, Avatar, Button, Badge } from '../components/ui';
 export default function MessagesPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { randomRoomId, friendRoomId, randomPartner, friendPartner } = useActiveChat();
+  const { randomRoomId, friendRoomId, randomPartner, friendPartner, randomInterests } = useActiveChat();
 
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,18 +47,31 @@ export default function MessagesPage() {
     }
   };
 
+  const handleResumeActiveChat = () => {
+    if (!activeRoomId) return;
+    const isRandom = activeRoomId === randomRoomId;
+    navigate(`/chat/${activeRoomId}`, {
+      state: {
+        partner: activePartner,
+        common_interests: isRandom ? randomInterests : [],
+        isRandomChat: isRandom,
+        isFriendChat: !isRandom,
+      },
+    });
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Messages Hub</h1>
-          <p className="text-xs text-[#9EA4AF] mt-1">Direct conversations & active live chat sessions</p>
+          <p className="text-xs text-[#9EA4AF] mt-1">Direct conversations &amp; active live chat sessions</p>
         </div>
 
         {activeRoomId && (
           <Button
-            onClick={() => navigate(`/chat/${activeRoomId}`)}
+            onClick={handleResumeActiveChat}
             variant="primary"
             size="md"
             className="gap-2 font-semibold"
@@ -88,7 +101,7 @@ export default function MessagesPage() {
             </div>
 
             <Button
-              onClick={() => navigate(`/chat/${activeRoomId}`)}
+              onClick={handleResumeActiveChat}
               variant="primary"
               size="md"
               className="gap-2 w-full sm:w-auto"

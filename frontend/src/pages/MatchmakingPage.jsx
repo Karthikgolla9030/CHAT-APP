@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useActiveChat } from '../context/ActiveChatContext';
 import { useMatchPreferences } from '../context/MatchPreferencesContext';
@@ -10,7 +10,8 @@ import { Card, Badge, Button } from '../components/ui';
 export default function MatchmakingPage() {
   const { user } = useAuth();
   const location = useLocation();
-  const { isSearching, searchStatus, startMatchmaking, stopMatchmaking } = useActiveChat();
+  const navigate = useNavigate();
+  const { isSearching, searchStatus, startMatchmaking, stopMatchmaking, randomRoomId, randomPartner, randomInterests, randomChatEnded } = useActiveChat();
   const { activePrefs, prefsInitialized, applyPrefs } = useMatchPreferences();
 
   const [gender, setGender] = useState(
@@ -63,6 +64,38 @@ export default function MatchmakingPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+      {/* Active Session Resume Banner if navigating to /match during live chat */}
+      {randomRoomId && !randomChatEnded && (
+        <Card className="p-4 bg-[#14181F] border-white/[0.08] flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Radio className="w-4 h-4 text-[#A66BFF] animate-pulse" />
+            <div>
+              <p className="text-xs font-semibold text-white">Active session in progress</p>
+              <p className="text-[11px] text-[#9EA4AF]">
+                Chatting with {randomPartner?.display_name || randomPartner?.username}
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() =>
+              navigate(`/chat/${randomRoomId}`, {
+                state: {
+                  partner: randomPartner,
+                  common_interests: randomInterests,
+                  isRandomChat: true,
+                },
+              })
+            }
+            variant="primary"
+            size="sm"
+            className="gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Resume Chat</span>
+          </Button>
+        </Card>
+      )}
+
       <div className="text-center space-y-3">
         <Badge tone={isSearching ? 'accent' : 'neutral'}>
           <Radio className={`w-3 h-3 ${isSearching ? 'text-[#A66BFF] dot-live' : 'text-[#9EA4AF]'}`} />
