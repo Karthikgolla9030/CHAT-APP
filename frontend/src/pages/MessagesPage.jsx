@@ -9,13 +9,14 @@ import { Card, Avatar, Button, Badge } from '../components/ui';
 export default function MessagesPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { randomRoomId, friendRoomId, randomPartner, friendPartner, randomInterests } = useActiveChat();
+  const { randomRoomId, friendRoomId, randomPartner, friendPartner, randomInterests, randomChatEnded } = useActiveChat();
 
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const activeRoomId = randomRoomId || friendRoomId;
-  const activePartner = randomPartner || friendPartner;
+  const isRandomActive = Boolean(randomRoomId && !randomChatEnded);
+  const activeRoomId = isRandomActive ? randomRoomId : friendRoomId;
+  const activePartner = isRandomActive ? randomPartner : friendPartner;
 
   useEffect(() => {
     const fetchFriendsForMessages = async () => {

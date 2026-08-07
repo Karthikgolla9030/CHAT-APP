@@ -173,6 +173,12 @@ export const ActiveChatProvider = ({ children }) => {
           });
         } else if (data.type === 'queue_joined') {
           setSearchStatus('Looking for your next match...');
+        } else if (data.type === 'chat_ended') {
+          const endedRoomId = data.room_id;
+          clearRandomChat();
+          if (endedRoomId && window.location.pathname.includes(`/chat/${endedRoomId}`)) {
+            navigate('/match');
+          }
         }
       } catch (err) {
         console.error('Matchmaking WS error:', err);
@@ -312,9 +318,10 @@ export const ActiveChatProvider = ({ children }) => {
             prev.map((msg) => (msg.id === data.message_id ? { ...msg, status: 'seen' } : msg))
           );
         } else if (data.type === 'chat_ended') {
-          setRandomChatEnded(true);
-          setRandomPartnerTyping(false);
-          setPartnerDisconnected(false);
+          clearRandomChat();
+          if (roomId && window.location.pathname.includes(`/chat/${roomId}`)) {
+            navigate('/match');
+          }
         } else if (data.type === 'partner_disconnected') {
           setPartnerDisconnected(true);
         } else if (data.type === 'partner_reconnected') {
