@@ -433,7 +433,7 @@ export default function ChatPage() {
 
   const {
     randomRoomId, randomPartner, randomInterests, randomMessages,
-    randomPartnerTyping, randomChatEnded, randomWsRef,
+    randomPartnerTyping, randomChatEnded, partnerDisconnected, randomWsRef,
     connectRandomRoom, handleSkip, handleNextMatch,
     isSearching, stopMatchmaking,
     friendRoomId, friendPartner, friendMessages,
@@ -640,6 +640,12 @@ export default function ChatPage() {
             <div className="flex items-center gap-2 text-xs text-[#A66BFF] italic font-medium pt-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[#A66BFF] animate-ping" />
               {partnerName} is typing...
+            </div>
+          )}
+          {partnerDisconnected && !chatEnded && (
+            <div className="p-3 rounded-xl bg-[#D9A441]/10 border border-[#D9A441]/25 text-center text-[#D9A441] text-xs font-medium animate-pulse flex items-center justify-center gap-2">
+              <Clock className="w-3.5 h-3.5" />
+              <span>Partner connection lost. Waiting 30 seconds for reconnection...</span>
             </div>
           )}
           {chatEnded && (

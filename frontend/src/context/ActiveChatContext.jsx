@@ -17,6 +17,7 @@ export const ActiveChatProvider = ({ children }) => {
   const [randomMessages, setRandomMessages] = useState([]);
   const [randomPartnerTyping, setRandomPartnerTyping] = useState(false);
   const [randomChatEnded, setRandomChatEnded] = useState(false);
+  const [partnerDisconnected, setPartnerDisconnected] = useState(false);
   const randomWsRef = useRef(null);
 
   // ─── Friend chat session state ───────────────────────────────────────
@@ -45,6 +46,7 @@ export const ActiveChatProvider = ({ children }) => {
     setRandomMessages([]);
     setRandomPartnerTyping(false);
     setRandomChatEnded(false);
+    setPartnerDisconnected(false);
   };
 
   const clearFriendChat = () => {
@@ -260,6 +262,10 @@ export const ActiveChatProvider = ({ children }) => {
           );
         } else if (data.type === 'chat_ended') {
           setRandomChatEnded(true);
+        } else if (data.type === 'partner_disconnected') {
+          setPartnerDisconnected(true);
+        } else if (data.type === 'partner_reconnected') {
+          setPartnerDisconnected(false);
         } else if (['friend_request_received', 'friend_status_update', 'friend_request_declined'].includes(data.type)) {
           handleFriendSignal(data.type, data);
         }
@@ -341,6 +347,7 @@ export const ActiveChatProvider = ({ children }) => {
         randomMessages,
         randomPartnerTyping,
         randomChatEnded,
+        partnerDisconnected,
         randomWsRef,
         connectRandomRoom,
         clearRandomChat,

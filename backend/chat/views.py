@@ -20,15 +20,16 @@ class RoomMessagesView(generics.ListAPIView):
         room = get_object_or_404(ChatRoom, id=room_id)
         if self.request.user.id not in [room.user1_id, room.user2_id]:
             raise PermissionDenied("You are not a member of this chat room.")
-        
-        # If the room is ended, check if they are currently friends
+
+        # Strict isolation: Random Chat history is deleted upon room termination.
+        # If the room is ended, check if they are currently friends.
         if room.status == 'ended':
             is_friend = Friendship.objects.filter(
                 Q(user1_id=room.user1_id, user2_id=room.user2_id) |
                 Q(user1_id=room.user2_id, user2_id=room.user1_id)
             ).exists()
             if not is_friend:
-                raise PermissionDenied("This chat room has ended and you are not friends with this user.")
+                raise PermissionDenied("This random chat room has ended and temporary messages were purged.")
 
         return Message.objects.filter(room=room).order_by('created_at')
 
@@ -49,7 +50,7 @@ class GetOrCreateFriendRoomView(APIView):
         ).exists()
 
         if not is_friend:
-            raise PermissionDenied("You can only chat with your friends.")
+            raise PermissionDenied("You can only chat with your accepted friends in Friends mode.")
 
         # 2. Check blocks
         is_blocked = BlockedUser.objects.filter(
@@ -69,6 +70,7 @@ class GetOrCreateFriendRoomView(APIView):
         # If it was ended, change back to active
         if room.status != 'active':
             room.status = 'active'
+            room.ended_at = None
             room.save()
 
         return Response({
@@ -76,8 +78,8 @@ class GetOrCreateFriendRoomView(APIView):
             'partner': {
                 'id': friend.id,
                 'username': friend.username,
-                'display_name': getattr(friend.profile, 'display_name', friend.username),
-                'avatar': friend.profile.avatar.url if getattr(friend.profile, 'avatar', None) else None,
+                'display_name': getattr(getattr(friend, 'profile', None), 'display_name', friend.username),
+                'avatar': friend.profile.avatar.url if getattr(getattr(friend, 'profile', None), 'avatar', None) else None,
             }
         })
 
@@ -106,7 +108,7 @@ class RoomDetailView(APIView):
             'partner': {
                 'id': partner.id,
                 'username': partner.username,
-                'display_name': getattr(partner.profile, 'display_name', partner.username),
-                'avatar': partner.profile.avatar.url if getattr(partner.profile, 'avatar', None) else None,
+                'display_name': getattr(getattr(partner, 'profile', None), 'display_name', partner.username),
+                'avatar': partner.profile.avatar.url if getattr(getattr(partner, 'profile', None), 'avatar', None) else None,
             }
         })

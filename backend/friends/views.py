@@ -6,10 +6,10 @@ from django.contrib.auth import get_user_model
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .models import FriendRequest, Friendship, BlockedUser
-from .serializers import FriendRequestSerializer, FriendshipSerializer, BlockedUserSerializer
+from .serializers import FriendRequestSerializer, FriendshipSerializer
+from common.services.friend import FriendService
 
 User = get_user_model()
-
 
 def _push_to_chat_room(room_id, payload):
     """Push an event to the chat room's Channels group so both users get it."""
@@ -42,29 +42,8 @@ class RelationshipStatusView(APIView):
         except User.DoesNotExist:
             return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        me = request.user
-
-        # Already friends?
-        if Friendship.objects.filter(
-            Q(user1=me, user2=partner) | Q(user1=partner, user2=me)
-        ).exists():
-            return Response({'status': 'friends'})
-
-        # I sent a pending request?
-        sent = FriendRequest.objects.filter(sender=me, receiver=partner, status='pending').first()
-        if sent:
-            return Response({'status': 'request_sent', 'request_id': str(sent.id)})
-
-        # I received a pending request?
-        received = FriendRequest.objects.filter(sender=partner, receiver=me, status='pending').first()
-        if received:
-            return Response({
-                'status': 'request_received',
-                'request_id': str(received.id),
-                'sender_username': partner.username,
-            })
-
-        return Response({'status': 'none'})
+        rel = FriendService.get_relationship(request.user, partner)
+        return Response(rel)
 
 
 class FriendListView(generics.ListAPIView):
@@ -96,7 +75,7 @@ class FriendRequestListCreateView(APIView):
 
     def post(self, request):
         target_id = request.data.get('target_user_id')
-        room_id = request.data.get('room_id')  # Optional: chat room for real-time notification
+        room_id = request.data.get('room_id')  # Optional chat room for inline notification
 
         if not target_id:
             return Response({'detail': 'target_user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -105,24 +84,13 @@ class FriendRequestListCreateView(APIView):
         except User.DoesNotExist:
             return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        if target_user == request.user:
-            return Response({'detail': 'Cannot send friend request to yourself'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            res = FriendService.send_request(request.user, target_user)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Already friends?
-        if Friendship.objects.filter(
-            Q(user1=request.user, user2=target_user) | Q(user1=target_user, user2=request.user)
-        ).exists():
-            return Response({'detail': 'Already friends', 'status': 'friends'}, status=status.HTTP_200_OK)
-
-        # Cross request? If they sent us one, accept it instead
-        reverse_req = FriendRequest.objects.filter(
-            sender=target_user, receiver=request.user, status='pending'
-        ).first()
-        if reverse_req:
-            reverse_req.status = 'accepted'
-            reverse_req.save()
-            u1, u2 = (request.user, target_user) if request.user.id < target_user.id else (target_user, request.user)
-            Friendship.objects.get_or_create(user1=u1, user2=u2)
+        # Notify via room WS if provided
+        if res['status'] == 'friends':
             payload = {
                 '_type': 'friend_status_update',
                 'new_status': 'friends',
@@ -130,27 +98,17 @@ class FriendRequestListCreateView(APIView):
                 'partner_id': target_user.id,
             }
             _push_to_chat_room(room_id, payload)
-            return Response({'detail': 'Cross request auto-accepted. You are now friends!', 'status': 'friends'}, status=status.HTTP_200_OK)
+        elif res['status'] == 'request_sent':
+            payload = {
+                '_type': 'friend_request_received',
+                'request_id': res.get('request_id'),
+                'sender_id': request.user.id,
+                'sender_username': request.user.username,
+                'receiver_id': target_user.id,
+            }
+            _push_to_chat_room(room_id, payload)
 
-        freq, created = FriendRequest.objects.get_or_create(
-            sender=request.user, receiver=target_user,
-            defaults={'status': 'pending'}
-        )
-
-        # Push real-time notification to the chat room so receiver sees inline request UI
-        payload = {
-            '_type': 'friend_request_received',
-            'request_id': str(freq.id),
-            'sender_id': request.user.id,
-            'sender_username': request.user.username,
-            'receiver_id': target_user.id,
-        }
-        _push_to_chat_room(room_id, payload)
-
-        return Response(
-            {'detail': 'Friend request sent', 'status': 'request_sent', 'request_id': str(freq.id)},
-            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
-        )
+        return Response(res, status=status.HTTP_200_OK if res['status'] == 'friends' else status.HTTP_201_CREATED)
 
 
 class AcceptFriendRequestView(APIView):
@@ -158,28 +116,20 @@ class AcceptFriendRequestView(APIView):
 
     def post(self, request, pk):
         room_id = request.data.get('room_id')
-
         try:
-            freq = FriendRequest.objects.get(id=pk, receiver=request.user, status='pending')
-        except FriendRequest.DoesNotExist:
-            return Response({'detail': 'Friend request not found'}, status=status.HTTP_404_NOT_FOUND)
+            res = FriendService.accept_request(request.user, pk)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_404_NOT_FOUND)
 
-        freq.status = 'accepted'
-        freq.save()
-
-        u1, u2 = (request.user, freq.sender) if request.user.id < freq.sender.id else (freq.sender, request.user)
-        Friendship.objects.get_or_create(user1=u1, user2=u2)
-
-        # Push real-time update so both users' headers update to "Friends ✓"
         payload = {
             '_type': 'friend_status_update',
             'new_status': 'friends',
-            'user_id': freq.sender.id,
+            'user_id': res['sender_id'],
             'partner_id': request.user.id,
         }
         _push_to_chat_room(room_id, payload)
 
-        return Response({'detail': 'Friend request accepted', 'status': 'friends'})
+        return Response(res)
 
 
 class RejectFriendRequestView(APIView):
@@ -187,25 +137,43 @@ class RejectFriendRequestView(APIView):
 
     def post(self, request, pk):
         room_id = request.data.get('room_id')
-
         try:
-            freq = FriendRequest.objects.get(id=pk, receiver=request.user, status='pending')
-        except FriendRequest.DoesNotExist:
-            return Response({'detail': 'Friend request not found'}, status=status.HTTP_404_NOT_FOUND)
+            res = FriendService.reject_request(request.user, pk)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_404_NOT_FOUND)
 
-        sender_id = freq.sender.id
-        freq.status = 'rejected'
-        freq.save()
-
-        # Notify sender in chat that request was declined
         payload = {
             '_type': 'friend_request_declined',
-            'sender_id': sender_id,
+            'sender_id': res['sender_id'],
             'receiver_id': request.user.id,
         }
         _push_to_chat_room(room_id, payload)
 
-        return Response({'detail': 'Friend request declined'})
+        return Response(res)
+
+
+class CancelFriendRequestView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            res = FriendService.cancel_request(request.user, pk)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        return Response(res)
+
+
+class RemoveFriendView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, friend_id):
+        try:
+            friend_user = User.objects.get(id=friend_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        res = FriendService.remove_friend(request.user, friend_user)
+        return Response(res)
 
 
 class BlockUserView(APIView):
