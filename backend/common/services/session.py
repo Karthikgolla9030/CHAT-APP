@@ -80,77 +80,89 @@ class SessionService:
     def end_session(room_id_str, ended_by_user_id=None, reason='skip'):
         """
         Atomically end an active session:
-        1. Set ChatRoom.status = 'ended'
-        2. Delete Redis keys for room and users
-        3. Delete temporary messages IF room is a random chat (Req 3)
-        4. Broadcast 'chat_ended' to the WS room group AND individual user groups
-        5. Clear presence state
+        1. Acquire Redis lock to prevent dual-skip race conditions
+        2. Set ChatRoom.status = 'ended'
+        3. Delete Redis keys for room and users
+        4. Delete temporary messages IF room is a random chat
+        5. Broadcast 'chat_ended' to the WS room group AND individual user groups
+        6. Clear presence state
         """
-        try:
-            room = ChatRoom.objects.get(id=room_id_str)
-        except ChatRoom.DoesNotExist:
+        redis_c = get_redis_client()
+        lock_key = f"session_end_lock:{room_id_str}"
+        acquired = redis_c.set(lock_key, "1", nx=True, ex=5)
+        if not acquired:
+            # Another request is executing teardown concurrently
             return None
 
-        if room.status == 'ended':
-            # Already ended
-            return room
-
-        room.status = 'ended'
-        room.ended_at = timezone.now()
-        room.save()
-
-        redis_c = get_redis_client()
-        u1_id = room.user1_id
-        u2_id = room.user2_id
-
-        # Clean Redis keys
-        redis_c.delete(f"session:{room_id_str}")
-        redis_c.delete(f"user_session:{u1_id}")
-        redis_c.delete(f"user_session:{u2_id}")
-        redis_c.delete(f"reconnect_pending:{room_id_str}:{u1_id}")
-        redis_c.delete(f"reconnect_pending:{room_id_str}:{u2_id}")
-        redis_c.delete(f"typing:{room_id_str}:{u1_id}")
-        redis_c.delete(f"typing:{room_id_str}:{u2_id}")
-
-        # Purge temporary messages IF random chat (Req 3 & Req 5)
-        if room.room_type == 'random':
-            Message.objects.filter(room=room).delete()
-            logger.info(f"Purged temporary messages for random chat room {room_id_str}")
-
-        # Broadcast WS event to room group AND individual user groups so BOTH clients terminate synchronously
         try:
-            channel_layer = get_channel_layer()
-            if channel_layer:
-                ended_payload = {
-                    'type': 'broadcast_chat_ended',
-                    'room_id': room_id_str,
-                    'ended_by': ended_by_user_id,
-                    'reason': reason
-                }
-                # 1. Broadcast to room group
-                async_to_sync(channel_layer.group_send)(f"chat_{room_id_str}", ended_payload)
+            try:
+                room = ChatRoom.objects.get(id=room_id_str)
+            except ChatRoom.DoesNotExist:
+                return None
 
-                # 2. Broadcast to individual user groups
-                user_notice = {
-                    'type': 'match_notification',
-                    'data': {
-                        'type': 'chat_ended',
+            if room.status == 'ended':
+                # Already ended
+                return room
+
+            room.status = 'ended'
+            room.ended_at = timezone.now()
+            room.save()
+
+            u1_id = room.user1_id
+            u2_id = room.user2_id
+
+            # Clean Redis keys
+            redis_c.delete(f"session:{room_id_str}")
+            redis_c.delete(f"user_session:{u1_id}")
+            redis_c.delete(f"user_session:{u2_id}")
+            redis_c.delete(f"reconnect_pending:{room_id_str}:{u1_id}")
+            redis_c.delete(f"reconnect_pending:{room_id_str}:{u2_id}")
+            redis_c.delete(f"typing:{room_id_str}:{u1_id}")
+            redis_c.delete(f"typing:{room_id_str}:{u2_id}")
+
+            # Purge temporary messages IF random chat
+            if room.room_type == 'random':
+                Message.objects.filter(room=room).delete()
+                logger.info(f"Purged temporary messages for random chat room {room_id_str}")
+
+            # Broadcast WS event to room group AND individual user groups so BOTH clients terminate synchronously
+            try:
+                channel_layer = get_channel_layer()
+                if channel_layer:
+                    ended_payload = {
+                        'type': 'broadcast_chat_ended',
                         'room_id': room_id_str,
                         'ended_by': ended_by_user_id,
                         'reason': reason
                     }
-                }
-                async_to_sync(channel_layer.group_send)(f"user_{u1_id}", user_notice)
-                async_to_sync(channel_layer.group_send)(f"user_{u2_id}", user_notice)
+                    async_to_sync(channel_layer.group_send)(f"chat_{room_id_str}", ended_payload)
 
-        except Exception as e:
-            logger.error(f"Error broadcasting chat_ended for room {room_id_str}: {e}")
+                    user_notice = {
+                        'type': 'match_notification',
+                        'data': {
+                            'type': 'chat_ended',
+                            'room_id': room_id_str,
+                            'ended_by': ended_by_user_id,
+                            'reason': reason
+                        }
+                    }
+                    async_to_sync(channel_layer.group_send)(f"user_{u1_id}", user_notice)
+                    async_to_sync(channel_layer.group_send)(f"user_{u2_id}", user_notice)
 
-        # Reset presence
-        PresenceService.set_presence(u1_id, STATUS_ONLINE)
-        PresenceService.set_presence(u2_id, STATUS_ONLINE)
+            except Exception as e:
+                logger.error(f"Error broadcasting chat_ended for room {room_id_str}: {e}")
 
-        return room
+            # Reset presence
+            PresenceService.set_presence(u1_id, STATUS_ONLINE)
+            PresenceService.set_presence(u2_id, STATUS_ONLINE)
+
+            return room
+
+        finally:
+            try:
+                redis_c.delete(lock_key)
+            except Exception:
+                pass
 
     @staticmethod
     def handle_disconnect(room_id_str, user_id):
