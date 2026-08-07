@@ -114,6 +114,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             'ended_by': event.get('ended_by'),
             'reason': event.get('reason', 'skip')
         })
+        await self.close(code=4003)
 
     async def broadcast_partner_disconnected(self, event):
         if event['disconnected_user_id'] != self.user.id:

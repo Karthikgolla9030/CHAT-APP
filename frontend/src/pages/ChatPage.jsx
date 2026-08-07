@@ -491,7 +491,7 @@ export default function ChatPage() {
       try {
         const res = await api.get(`/chat/rooms/${roomId}/`);
         setPartnerInfo(res.data.partner);
-        setChatType(res.data.room_type === 'friend' || res.data.is_friend_chat ? 'friend' : 'random');
+        setChatType(res.data.room_type === 'friend' ? 'friend' : 'random');
       } catch {
         setChatType(null);
       }
