@@ -186,7 +186,10 @@ export const ActiveChatProvider = ({ children }) => {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'match_found') {
-          matchWsRef.current = null;
+          if (matchWsRef.current) {
+            try { matchWsRef.current.close(); } catch (_) {}
+            matchWsRef.current = null;
+          }
           matchSessionIdRef.current = null;
           setIsSearching(false);
           setSearchStatus('');
@@ -314,6 +317,11 @@ export const ActiveChatProvider = ({ children }) => {
     const token = localStorage.getItem('access_token');
     if (!token) return;
 
+    if (randomWsRef.current) {
+      try { randomWsRef.current.close(); } catch (_) {}
+      randomWsRef.current = null;
+    }
+
     const socketUrl = import.meta.env.PROD
       ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/chat/${roomId}/?token=${token}`
       : `${WS_BASE_URL}/chat/${roomId}/?token=${token}`;
@@ -343,7 +351,7 @@ export const ActiveChatProvider = ({ children }) => {
             return [...prev, data.message];
           });
           const currentUserId = JSON.parse(atob(token.split('.')[1])).user_id;
-          if (data.message.sender_id !== currentUserId && ws.readyState === WebSocket.OPEN) {
+          if (data.message.sender_id !== currentUserId && data.message.status !== 'seen' && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'mark_seen', message_id: data.message.id }));
           }
         } else if (data.type === 'typing') {
@@ -390,9 +398,14 @@ export const ActiveChatProvider = ({ children }) => {
 
   // ─── Connect to friend room ──────────────────────────────────────────
   const connectFriendRoom = async (roomId, partnerData) => {
-    if (friendRoomId === roomId) return;
-
-    clearFriendChat();
+    if (friendRoomId === roomId) {
+      if (friendPartner !== partnerData) setFriendPartner(partnerData);
+      if (friendWsRef.current && (friendWsRef.current.readyState === WebSocket.OPEN || friendWsRef.current.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+    } else {
+      clearFriendChat();
+    }
 
     setFriendRoomId(roomId);
     setFriendPartner(partnerData);
@@ -406,6 +419,11 @@ export const ActiveChatProvider = ({ children }) => {
 
     const token = localStorage.getItem('access_token');
     if (!token) return;
+
+    if (friendWsRef.current) {
+      try { friendWsRef.current.close(); } catch (_) {}
+      friendWsRef.current = null;
+    }
 
     const socketUrl = import.meta.env.PROD
       ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/chat/${roomId}/?token=${token}`
@@ -424,7 +442,7 @@ export const ActiveChatProvider = ({ children }) => {
             return [...prev, data.message];
           });
           const currentUserId = JSON.parse(atob(token.split('.')[1])).user_id;
-          if (data.message.sender_id !== currentUserId && ws.readyState === WebSocket.OPEN) {
+          if (data.message.sender_id !== currentUserId && data.message.status !== 'seen' && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'mark_seen', message_id: data.message.id }));
           }
         } else if (data.type === 'typing') {
