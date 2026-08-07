@@ -35,7 +35,7 @@ function ShellLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { randomRoomId, randomChatEnded, randomPartner, randomInterests } = useActiveChat();
+  const { randomRoomId, randomChatEnded, randomPartner, randomInterests, hasActiveRedisSession } = useActiveChat();
 
   const isCurrentActiveRoom = randomRoomId && location.pathname.startsWith(`/chat/${randomRoomId}`);
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
@@ -133,7 +133,7 @@ function ShellLayout() {
       </div>
 
       {/* Persistent Active Chat Floating Banner */}
-      {!isCurrentActiveRoom && randomRoomId && !randomChatEnded && (
+      {!isCurrentActiveRoom && hasActiveRedisSession && randomRoomId && !randomChatEnded && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 animate-slide-up">
           <div className="bg-[#14181F] border border-white/10 p-3 pl-4 rounded-xl shadow-menu flex items-center justify-between gap-4">
             <div className="flex items-center gap-2.5 min-w-0">

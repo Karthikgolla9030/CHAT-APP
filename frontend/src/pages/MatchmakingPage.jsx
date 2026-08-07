@@ -11,7 +11,7 @@ export default function MatchmakingPage() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isSearching, searchStatus, startMatchmaking, stopMatchmaking, randomRoomId, randomPartner, randomInterests, randomChatEnded, validateActiveSessionWithRedis } = useActiveChat();
+  const { isSearching, searchStatus, startMatchmaking, stopMatchmaking, randomRoomId, randomPartner, randomInterests, randomChatEnded, hasActiveRedisSession, validateActiveSessionWithRedis } = useActiveChat();
   const { activePrefs, prefsInitialized, applyPrefs } = useMatchPreferences();
 
   const [gender, setGender] = useState(
@@ -66,7 +66,7 @@ export default function MatchmakingPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       {/* Active Session Resume Banner if navigating to /match during live chat */}
-      {randomRoomId && !randomChatEnded && (
+      {hasActiveRedisSession && randomRoomId && !randomChatEnded && (
         <Card className="p-4 bg-[#14181F] border-white/[0.08] flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Radio className="w-4 h-4 text-[#A66BFF] animate-pulse" />

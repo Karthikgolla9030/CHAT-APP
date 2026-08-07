@@ -11,6 +11,7 @@ export const ActiveChatProvider = ({ children }) => {
   const navigate = useNavigate();
 
   // ─── Random chat session state ──────────────────────────────────────
+  const [hasActiveRedisSession, setHasActiveRedisSession] = useState(false);
   const [randomRoomId, setRandomRoomId] = useState(null);
   const [randomPartner, setRandomPartner] = useState(null);
   const [randomInterests, setRandomInterests] = useState([]);
@@ -34,6 +35,22 @@ export const ActiveChatProvider = ({ children }) => {
   const matchSessionIdRef = useRef(null);
   const matchWsRef = useRef(null);
 
+  // ─── Clear helpers ───────────────────────────────────────────────────
+  const clearRandomChat = () => {
+    if (randomWsRef.current) {
+      randomWsRef.current.close();
+      randomWsRef.current = null;
+    }
+    setHasActiveRedisSession(false);
+    setRandomRoomId(null);
+    setRandomPartner(null);
+    setRandomInterests([]);
+    setRandomMessages([]);
+    setRandomPartnerTyping(false);
+    setRandomChatEnded(false);
+    setPartnerDisconnected(false);
+  };
+
   // ─── Validate Redis active session (never trust stale local state) ──
   const validateActiveSessionWithRedis = useCallback(async () => {
     const token = localStorage.getItem('access_token');
@@ -43,31 +60,21 @@ export const ActiveChatProvider = ({ children }) => {
     }
     try {
       const res = await api.get('/chat/active-session/');
-      if (!res.data.has_active_session) {
+      if (res.data.has_active_session) {
+        setHasActiveRedisSession(true);
+        if (res.data.room_id) setRandomRoomId(res.data.room_id);
+        if (res.data.partner) setRandomPartner(res.data.partner);
+        return true;
+      } else {
         clearRandomChat();
         return false;
       }
-      return true;
     } catch (err) {
       console.error('Failed to validate active session with Redis:', err);
+      clearRandomChat();
       return false;
     }
   }, []);
-
-  // ─── Clear helpers ───────────────────────────────────────────────────
-  const clearRandomChat = () => {
-    if (randomWsRef.current) {
-      randomWsRef.current.close();
-      randomWsRef.current = null;
-    }
-    setRandomRoomId(null);
-    setRandomPartner(null);
-    setRandomInterests([]);
-    setRandomMessages([]);
-    setRandomPartnerTyping(false);
-    setRandomChatEnded(false);
-    setPartnerDisconnected(false);
-  };
 
   const clearFriendChat = () => {
     if (friendWsRef.current) {
@@ -184,6 +191,7 @@ export const ActiveChatProvider = ({ children }) => {
           setIsSearching(false);
           setSearchStatus('');
           clearRandomChat();
+          setHasActiveRedisSession(true);
           navigate(`/chat/${data.room_id}`, {
             state: {
               partner: data.partner,
@@ -446,6 +454,7 @@ export const ActiveChatProvider = ({ children }) => {
   return (
     <ActiveChatContext.Provider
       value={{
+        hasActiveRedisSession,
         randomRoomId,
         randomPartner,
         randomInterests,
