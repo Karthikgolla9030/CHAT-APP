@@ -48,25 +48,26 @@ class SessionService:
         redis_c = get_redis_client()
         room_id_str = str(room.id)
 
-        # Store room details in Redis
-        session_data = {
-            'room_id': room_id_str,
-            'user1_id': u1.id,
-            'user2_id': u2.id,
-            'room_type': room.room_type,
-            'status': 'active',
-            'created_at': time.time(),
-            'match_score': match_score
-        }
-        redis_c.hset(f"session:{room_id_str}", mapping=session_data)
+        # Store room details in Redis ONLY for random match sessions
+        if room.room_type == 'random':
+            session_data = {
+                'room_id': room_id_str,
+                'user1_id': u1.id,
+                'user2_id': u2.id,
+                'room_type': room.room_type,
+                'status': 'active',
+                'created_at': time.time(),
+                'match_score': match_score
+            }
+            redis_c.hset(f"session:{room_id_str}", mapping=session_data)
 
-        # Map both users to this active session
-        redis_c.set(f"user_session:{u1.id}", room_id_str, ex=86400)
-        redis_c.set(f"user_session:{u2.id}", room_id_str, ex=86400)
+            # Map both users to this active random session
+            redis_c.set(f"user_session:{u1.id}", room_id_str, ex=86400)
+            redis_c.set(f"user_session:{u2.id}", room_id_str, ex=86400)
 
-        # Update presence for both
-        PresenceService.set_presence(u1.id, STATUS_MATCHED, room_id=room_id_str)
-        PresenceService.set_presence(u2.id, STATUS_MATCHED, room_id=room_id_str)
+            # Update presence for both
+            PresenceService.set_presence(u1.id, STATUS_MATCHED, room_id=room_id_str)
+            PresenceService.set_presence(u2.id, STATUS_MATCHED, room_id=room_id_str)
 
         return room
 
