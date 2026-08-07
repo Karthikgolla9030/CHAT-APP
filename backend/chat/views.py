@@ -23,7 +23,7 @@ class RoomMessagesView(generics.ListAPIView):
 
         # Strict isolation: Random Chat history for room_type='random' is purged on room termination.
         if room.status == 'ended' and room.room_type == 'random':
-            raise PermissionDenied("This random chat room has ended and temporary messages were purged.")
+            return Message.objects.none()
 
         return Message.objects.filter(room=room).order_by('created_at')
 

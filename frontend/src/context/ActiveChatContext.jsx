@@ -294,6 +294,13 @@ export const ActiveChatProvider = ({ children }) => {
       setRandomMessages(res.data);
     } catch (err) {
       console.error('Failed to load random messages:', err);
+      if (err.response?.status === 403 || err.response?.status === 404) {
+        clearRandomChat();
+        if (window.location.pathname.includes(`/chat/${roomId}`)) {
+          navigate('/match');
+        }
+        return;
+      }
     }
 
     const token = localStorage.getItem('access_token');
@@ -354,7 +361,14 @@ export const ActiveChatProvider = ({ children }) => {
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+      if (event.code === 4003 || event.code === 4001) {
+        clearRandomChat();
+        if (window.location.pathname.includes(`/chat/${roomId}`)) {
+          navigate('/match');
+        }
+        return;
+      }
       // If session is still supposed to be active and not explicitly ended, attempt auto-reconnect
       if (randomRoomId === roomId && !randomChatEnded) {
         setTimeout(() => {
