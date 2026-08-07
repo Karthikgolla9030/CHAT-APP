@@ -224,3 +224,6 @@ class SessionService:
                 logger.error(f"Error broadcasting reconnect alert for room {room_id_str}: {e}")
 
         return True
+
+
+SessionManager = SessionService

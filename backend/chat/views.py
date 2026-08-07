@@ -54,8 +54,7 @@ class GetOrCreateFriendRoomView(APIView):
             raise PermissionDenied("Cannot start a chat session. User is blocked.")
 
         # 3. Retrieve or create dedicated permanent friend room (room_type='friend')
-        from common.services.session import SessionService
-        room = SessionService.create_session(request.user, friend, room_type='friend')
+        room = FriendService.get_or_create_friend_room(request.user, friend)
 
         return Response({
             'room_id': str(room.id),

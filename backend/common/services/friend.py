@@ -164,3 +164,23 @@ class FriendService:
             'status': STATUS_NONE,
             'detail': 'Friend removed successfully'
         }
+
+    @staticmethod
+    def get_or_create_friend_room(user1, user2):
+        """
+        Get or create permanent friend chat room (room_type='friend') strictly in PostgreSQL.
+        Never touches Redis active random session keys.
+        """
+        from chat.models import ChatRoom
+        u1, u2 = (user1, user2) if user1.id < user2.id else (user2, user1)
+        room, created = ChatRoom.objects.get_or_create(
+            user1=u1,
+            user2=u2,
+            room_type='friend',
+            defaults={'status': 'active'}
+        )
+        if room.status != 'active':
+            room.status = 'active'
+            room.ended_at = None
+            room.save(update_fields=['status', 'ended_at'])
+        return room
