@@ -143,13 +143,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             return False
         if self.user.id not in [self.room.user1_id, self.room.user2_id]:
             return False
-        if self.room.status == 'ended':
-            from friends.models import Friendship
-            from django.db.models import Q
-            is_friend = Friendship.objects.filter(
-                Q(user1_id=self.room.user1_id, user2_id=self.room.user2_id) |
-                Q(user1_id=self.room.user2_id, user2_id=self.room.user1_id)
-            ).exists()
-            if not is_friend:
-                return False
+        if self.room.status == 'ended' and self.room.room_type == 'random':
+            return False
         return True

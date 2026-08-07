@@ -434,7 +434,7 @@ export default function ChatPage() {
   const {
     randomRoomId, randomPartner, randomInterests, randomMessages,
     randomPartnerTyping, randomChatEnded, partnerDisconnected, randomWsRef,
-    connectRandomRoom, handleSkip, handleNextMatch,
+    connectRandomRoom, sendRandomMessage, handleSkip, handleNextMatch,
     isSearching, stopMatchmaking,
     friendRoomId, friendPartner, friendMessages,
     friendPartnerTyping, friendChatEnded, friendWsRef,
@@ -518,15 +518,23 @@ export default function ChatPage() {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!inputMessage.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || chatEnded) return;
-    wsRef.current.send(JSON.stringify({ type: 'chat_message', message: inputMessage.trim() }));
+    if (!inputMessage.trim() || chatEnded) return;
+    const text = inputMessage.trim();
     setInputMessage('');
     handleTyping(false);
+
+    if (chatType === 'random') {
+      sendRandomMessage(text);
+    } else if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'chat_message', message: text }));
+    }
   };
 
   const handleTyping = (isTyping) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || chatEnded) return;
-    wsRef.current.send(JSON.stringify({ type: 'typing', is_typing: isTyping }));
+    try {
+      wsRef.current.send(JSON.stringify({ type: 'typing', is_typing: isTyping }));
+    } catch (_) {}
     if (isTyping) {
       clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => handleTyping(false), 2000);

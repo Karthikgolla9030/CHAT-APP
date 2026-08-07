@@ -193,33 +193,58 @@ export const ActiveChatProvider = ({ children }) => {
     };
   }, [navigate]);
 
+  const pendingSendQueueRef = useRef([]);
+
+  // ─── Send message in random chat (with auto-connect & queueing) ─────
+  const sendRandomMessage = (content) => {
+    if (!content || !content.trim()) return;
+    const text = content.trim();
+
+    if (randomWsRef.current && randomWsRef.current.readyState === WebSocket.OPEN) {
+      randomWsRef.current.send(JSON.stringify({ type: 'chat_message', message: text }));
+    } else {
+      pendingSendQueueRef.current.push({ type: 'chat_message', message: text });
+      if (randomRoomId && (!randomWsRef.current || randomWsRef.current.readyState === WebSocket.CLOSED)) {
+        connectRandomRoom(randomRoomId, randomPartner, randomInterests);
+      }
+    }
+  };
+
   // ─── Skip: end chat, go to preferences page ──────────────────────────
-  const handleSkip = () => {
+  const handleSkip = async () => {
+    const currentRoomId = randomRoomId;
     if (randomWsRef.current && randomWsRef.current.readyState === WebSocket.OPEN) {
       try {
         randomWsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
       } catch (_) {}
     }
-    setTimeout(() => {
-      clearRandomChat();
-      stopMatchmaking();
-      navigate('/match', { state: { autoStart: false } });
-    }, 50);
+    if (currentRoomId) {
+      try {
+        await api.post(`/chat/rooms/${currentRoomId}/skip/`);
+      } catch (_) {}
+    }
+    clearRandomChat();
+    stopMatchmaking();
+    navigate('/match', { state: { autoStart: false } });
   };
 
   // ─── Next Match: end chat, start searching ───────────────────────────
-  const handleNextMatch = (prefs) => {
+  const handleNextMatch = async (prefs) => {
     if (isSearching) return;
+    const currentRoomId = randomRoomId;
 
     if (randomWsRef.current && randomWsRef.current.readyState === WebSocket.OPEN) {
       try {
         randomWsRef.current.send(JSON.stringify({ type: 'skip_chat' }));
       } catch (_) {}
     }
-    setTimeout(() => {
-      clearRandomChat();
-      startMatchmaking(prefs);
-    }, 50);
+    if (currentRoomId) {
+      try {
+        await api.post(`/chat/rooms/${currentRoomId}/skip/`);
+      } catch (_) {}
+    }
+    clearRandomChat();
+    startMatchmaking(prefs);
   };
 
   // ─── Connect to random room ──────────────────────────────────────────
@@ -255,6 +280,18 @@ export const ActiveChatProvider = ({ children }) => {
     const ws = new WebSocket(socketUrl);
     randomWsRef.current = ws;
 
+    ws.onopen = () => {
+      // Flush any queued messages that were sent while connecting
+      while (pendingSendQueueRef.current.length > 0) {
+        const msg = pendingSendQueueRef.current.shift();
+        try {
+          ws.send(JSON.stringify(msg));
+        } catch (e) {
+          console.error('Failed to flush queued message:', e);
+        }
+      }
+    };
+
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -287,6 +324,17 @@ export const ActiveChatProvider = ({ children }) => {
         }
       } catch (err) {
         console.error('Error in random WS:', err);
+      }
+    };
+
+    ws.onclose = () => {
+      // If session is still supposed to be active and not explicitly ended, attempt auto-reconnect
+      if (randomRoomId === roomId && !randomChatEnded) {
+        setTimeout(() => {
+          if (randomRoomId === roomId && !randomChatEnded) {
+            connectRandomRoom(roomId, partnerData, interests);
+          }
+        }, 1000);
       }
     };
   };
@@ -366,6 +414,7 @@ export const ActiveChatProvider = ({ children }) => {
         partnerDisconnected,
         randomWsRef,
         connectRandomRoom,
+        sendRandomMessage,
         clearRandomChat,
         setRandomMessages,
         setRandomPartnerTyping,

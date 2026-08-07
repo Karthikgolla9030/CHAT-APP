@@ -100,3 +100,16 @@ class RoomDetailView(APIView):
                 'avatar': partner.profile.avatar.url if getattr(getattr(partner, 'profile', None), 'avatar', None) else None,
             }
         })
+
+
+class SkipRoomView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, room_id):
+        room = get_object_or_404(ChatRoom, id=room_id)
+        if request.user.id not in [room.user1_id, room.user2_id]:
+            raise PermissionDenied("You are not a member of this chat room.")
+
+        from common.services.session import SessionService
+        SessionService.end_session(str(room.id), ended_by_user_id=request.user.id, reason='skip')
+        return Response({'status': 'ended', 'room_id': str(room.id)})
