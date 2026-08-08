@@ -65,6 +65,16 @@ export const ActiveChatProvider = ({ children }) => {
       if (window.__messageStateSetters && window.__messageStateSetters.handleNotification) {
         window.__messageStateSetters.handleNotification(data);
       }
+
+      // Forward to FriendsPage if it set a setter
+      if (window.__friendPageStateSetters && window.__friendPageStateSetters.handleNotification) {
+        window.__friendPageStateSetters.handleNotification(data);
+      }
+
+      // Forward to ChatPage FriendStatusButton
+      if (window.__friendStateSetters && window.__friendStateSetters.handleNotification) {
+        window.__friendStateSetters.handleNotification(data);
+      }
     };
     
     return () => {

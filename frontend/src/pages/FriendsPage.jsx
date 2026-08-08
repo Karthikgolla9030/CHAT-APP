@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { Users, UserCheck, Search, Check, X, UserX, MessageSquare } from 'lucide-react';
+import { Users, UserCheck, Search, Check, X, UserX, MessageSquare, MoreVertical, UserMinus } from 'lucide-react';
 import { Card, Avatar, Button, Badge } from '../components/ui';
 
 export default function FriendsPage() {
@@ -10,6 +10,8 @@ export default function FriendsPage() {
   const [requests, setRequests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [confirmRemove, setConfirmRemove] = useState(null);
 
   const fetchFriends = async (query = '') => {
     try {
@@ -36,6 +38,30 @@ export default function FriendsPage() {
       setLoading(false);
     };
     init();
+
+    window.__friendPageStateSetters = {
+      handleNotification: (data) => {
+        if (data.type === 'notification' && data.data?.type === 'friend_removed') {
+          const removedId = data.data.user_id;
+          setFriends((prev) => prev.filter((f) => f.friend.id !== removedId));
+        }
+      }
+    };
+
+    return () => {
+      window.__friendPageStateSetters = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setActiveDropdown(null);
+      setConfirmRemove(null);
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
   }, []);
 
   const handleSearch = (e) => {
@@ -58,6 +84,17 @@ export default function FriendsPage() {
     try {
       await api.post(`/friends/requests/${reqId}/reject/`);
       fetchRequests();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRemoveFriend = async (friendId) => {
+    try {
+      await api.post(`/friends/${friendId}/remove/`);
+      setFriends((prev) => prev.filter((f) => f.friend.id !== friendId));
+      setActiveDropdown(null);
+      setConfirmRemove(null);
     } catch (err) {
       console.error(err);
     }
@@ -173,7 +210,7 @@ export default function FriendsPage() {
                   className="p-5 bg-[#14181F] border-white/[0.05] flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between relative">
                       <div className="flex items-center gap-3">
                         <Avatar name={name} size="md" online={isOnline} />
                         <div className="min-w-0">
@@ -181,6 +218,65 @@ export default function FriendsPage() {
                           <span className="text-xs text-[#9EA4AF]">@{item.friend.username}</span>
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (activeDropdown === item.friend.id) {
+                            setActiveDropdown(null);
+                            setConfirmRemove(null);
+                          } else {
+                            setActiveDropdown(item.friend.id);
+                            setConfirmRemove(null);
+                          }
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-[#1A1F28] text-[#9EA4AF] hover:text-white transition-colors"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {activeDropdown === item.friend.id && (
+                        <div className="absolute right-0 top-10 z-10 w-64 bg-[#1A1F28] border border-white/10 rounded-xl shadow-menu p-3">
+                          {!confirmRemove ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmRemove(item.friend.id);
+                              }}
+                              className="flex items-center gap-2 w-full p-2 rounded-lg text-sm font-medium text-[#D66B6B] hover:bg-[#D66B6B]/10 transition-colors text-left"
+                            >
+                              <UserMinus className="w-4 h-4" />
+                              <span>Remove Friend</span>
+                            </button>
+                          ) : (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <p className="text-sm font-semibold text-white mb-1">Remove this friend?</p>
+                              <p className="text-xs text-[#9EA4AF] mb-3">
+                                This will remove both users from each other's friend list.
+                              </p>
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => setConfirmRemove(null)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="flex-1"
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  onClick={() => handleRemoveFriend(item.friend.id)}
+                                  variant="danger"
+                                  size="sm"
+                                  className="flex-1"
+                                >
+                                  Remove Friend
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="pt-3 border-t border-white/[0.05] flex items-center justify-between text-xs text-[#9EA4AF]">

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useActiveChat } from '../context/ActiveChatContext';
 import api from '../services/api';
-import { MessageSquare, Users, Sparkles, ArrowRight, UserX, Circle } from 'lucide-react';
+import { MessageSquare, Users, Sparkles, ArrowRight, UserX, Circle, MoreVertical, UserMinus } from 'lucide-react';
 import { Card, Avatar, Button, Badge } from '../components/ui';
 
 export default function MessagesPage() {
@@ -13,6 +13,8 @@ export default function MessagesPage() {
 
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [confirmRemove, setConfirmRemove] = useState(null);
 
   const isRandomActive = Boolean(hasActiveRedisSession && randomRoomId && !randomChatEnded);
   const activeRoomId = isRandomActive ? randomRoomId : friendRoomId;
@@ -54,14 +56,35 @@ export default function MessagesPage() {
             }
             return f;
           }));
+        } else if (data.type === 'notification' && data.data?.type === 'friend_removed') {
+          const removedId = data.data.user_id;
+          setFriends((prev) => prev.filter((f) => f.friend.id !== removedId));
         }
       }
     };
 
+    const handleClickOutside = () => {
+      setActiveDropdown(null);
+      setConfirmRemove(null);
+    };
+    document.addEventListener('click', handleClickOutside);
+
     return () => {
       window.__messageStateSetters = null;
+      document.removeEventListener('click', handleClickOutside);
     };
   }, []);
+
+  const handleRemoveFriend = async (friendId) => {
+    try {
+      await api.post(`/friends/${friendId}/remove/`);
+      setFriends((prev) => prev.filter((f) => f.friend.id !== friendId));
+      setActiveDropdown(null);
+      setConfirmRemove(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleStartFriendChat = async (friendId) => {
     try {
@@ -204,15 +227,76 @@ export default function MessagesPage() {
                     <Avatar name={name} size="lg" online={isOnline ? true : undefined} />
                     
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      <div className="flex justify-between items-center mb-1">
+                      <div className="flex justify-between items-center mb-1 relative">
                         <div className="flex items-center gap-2 min-w-0">
                           <h3 className="font-semibold text-white text-base truncate">{name}</h3>
                           {/* Removed the '🟢 Online / ⚪ Offline' text as requested */}
                         </div>
-                        {item.last_message && (
-                          <span className="text-xs text-[#9EA4AF] flex-shrink-0 ml-3">
-                            {formatTime(item.last_message.created_at)}
-                          </span>
+                        <div className="flex items-center">
+                          {item.last_message && (
+                            <span className="text-xs text-[#9EA4AF] flex-shrink-0 ml-3">
+                              {formatTime(item.last_message.created_at)}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (activeDropdown === item.friend.id) {
+                                setActiveDropdown(null);
+                                setConfirmRemove(null);
+                              } else {
+                                setActiveDropdown(item.friend.id);
+                                setConfirmRemove(null);
+                              }
+                            }}
+                            className="ml-2 p-1.5 rounded-lg hover:bg-[#1A1F28] text-[#9EA4AF] hover:text-white transition-colors"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {activeDropdown === item.friend.id && (
+                          <div className="absolute right-0 top-8 z-10 w-64 bg-[#1A1F28] border border-white/10 rounded-xl shadow-menu p-3">
+                            {!confirmRemove ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmRemove(item.friend.id);
+                                }}
+                                className="flex items-center gap-2 w-full p-2 rounded-lg text-sm font-medium text-[#D66B6B] hover:bg-[#D66B6B]/10 transition-colors text-left"
+                              >
+                                <UserMinus className="w-4 h-4" />
+                                <span>Remove Friend</span>
+                              </button>
+                            ) : (
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <p className="text-sm font-semibold text-white mb-1">Remove this friend?</p>
+                                <p className="text-xs text-[#9EA4AF] mb-3">
+                                  This will remove both users from each other's friend list.
+                                </p>
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() => setConfirmRemove(null)}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="flex-1"
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleRemoveFriend(item.friend.id)}
+                                    variant="danger"
+                                    size="sm"
+                                    className="flex-1"
+                                  >
+                                    Remove Friend
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                       

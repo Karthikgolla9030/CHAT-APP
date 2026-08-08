@@ -7,7 +7,8 @@ import api from '../services/api';
 import {
   Send, SkipForward, Sparkles, Check, CheckCheck,
   MessageSquare, UserPlus, UserCheck, UserX, Clock, Users,
-  XCircle, ArrowLeft, Sliders, X, Tag, Plus, Radio, Search
+  XCircle, ArrowLeft, Sliders, X, Tag, Plus, Radio, Search,
+  MoreVertical, UserMinus
 } from 'lucide-react';
 import { GENDER_CHOICES, LOOKING_FOR_CHOICES, PRESET_INTERESTS } from '../utils/constants';
 import { Card, Badge, Button, Avatar } from '../components/ui';
@@ -209,11 +210,24 @@ const FriendStatusButton = ({ roomId, partner }) => {
   const [relStatus, setRelStatus] = useState('loading');
   const [requestId, setRequestId] = useState(null);
   const [showPanel, setShowPanel] = useState(false);
+  const [showConfirmRemove, setShowConfirmRemove] = useState(false);
   const panelRef = useRef(null);
 
   useEffect(() => {
     if (partner?.id) {
-      window.__friendStateSetters = { setRelStatus, setRequestId, setShowPanel };
+      window.__friendStateSetters = {
+        setRelStatus,
+        setRequestId,
+        setShowPanel,
+        handleNotification: (data) => {
+          if (data.type === 'notification' && data.data?.type === 'friend_removed') {
+            if (data.data.user_id === partner.id) {
+              setRelStatus('none');
+              setShowPanel(false);
+            }
+          }
+        }
+      };
     }
     return () => {
       delete window.__friendStateSetters;
@@ -279,6 +293,18 @@ const FriendStatusButton = ({ roomId, partner }) => {
     setShowPanel(false);
   };
 
+  const removeFriend = async () => {
+    setRelStatus('loading');
+    try {
+      await api.post(`/friends/${partner.id}/remove/`);
+      setRelStatus('none');
+    } catch {
+      setRelStatus('friends');
+    }
+    setShowConfirmRemove(false);
+    setShowPanel(false);
+  };
+
   const renderIcon = () => {
     switch (relStatus) {
       case 'loading':
@@ -289,9 +315,22 @@ const FriendStatusButton = ({ roomId, partner }) => {
         );
       case 'friends':
         return (
-          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#7BAA82]/15 border border-[#7BAA82]/30 text-[#7BAA82] text-xs font-semibold">
-            <UserCheck className="w-3.5 h-3.5" /> Friends ✓
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#7BAA82]/15 border border-[#7BAA82]/30 text-[#7BAA82] text-xs font-semibold">
+              <UserCheck className="w-3.5 h-3.5" /> Friends ✓
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setShowConfirmRemove(false);
+                setShowPanel((v) => !v);
+              }}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-[#1A1F28] border border-white/10 hover:border-[#A66BFF]/40 transition-all cursor-pointer"
+              title="More Options"
+            >
+              <MoreVertical className="w-4 h-4 text-[#9EA4AF] hover:text-white" />
+            </button>
+          </div>
         );
       case 'request_sent':
         return (
@@ -328,10 +367,39 @@ const FriendStatusButton = ({ roomId, partner }) => {
     <div className="relative flex-shrink-0" ref={panelRef}>
       {renderIcon()}
       {showPanel &&
-        relStatus !== 'friends' &&
         relStatus !== 'request_sent' &&
         relStatus !== 'loading' && (
           <div className="absolute right-0 top-10 z-50 w-64 bg-[#14181F] border border-white/10 rounded-xl shadow-menu p-4">
+            {relStatus === 'friends' && !showConfirmRemove && (
+              <div className="flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmRemove(true)}
+                  className="flex items-center gap-2 w-full p-2.5 rounded-lg text-sm font-medium text-[#D66B6B] hover:bg-[#D66B6B]/10 transition-colors text-left"
+                >
+                  <UserMinus className="w-4 h-4" />
+                  <span>Remove Friend</span>
+                </button>
+              </div>
+            )}
+            
+            {relStatus === 'friends' && showConfirmRemove && (
+              <>
+                <p className="text-sm font-semibold text-white mb-1">Remove this friend?</p>
+                <p className="text-xs text-[#9EA4AF] mb-3">
+                  This action will remove both users from each other's friend list.
+                </p>
+                <div className="flex gap-2">
+                  <Button onClick={() => setShowConfirmRemove(false)} variant="ghost" size="sm" className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button onClick={removeFriend} variant="danger" size="sm" className="flex-1">
+                    Remove Friend
+                  </Button>
+                </div>
+              </>
+            )}
+
             {relStatus === 'none' && (
               <>
                 <p className="text-sm font-semibold text-white mb-1">Add as Friend?</p>

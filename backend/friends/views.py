@@ -182,6 +182,25 @@ class RemoveFriendView(APIView):
             return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
         res = FriendService.remove_friend(request.user, friend_user)
+
+        # Broadcast the removal to both users via the global notifications websocket
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        channel_layer = get_channel_layer()
+        
+        for uid in [request.user.id, friend_user.id]:
+            removed_id = friend_user.id if uid == request.user.id else request.user.id
+            async_to_sync(channel_layer.group_send)(
+                f"notifications_{uid}",
+                {
+                    'type': 'send_notification',
+                    'data': {
+                        'type': 'friend_removed',
+                        'user_id': removed_id
+                    }
+                }
+            )
+
         return Response(res)
 
 
