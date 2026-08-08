@@ -71,7 +71,7 @@ export default function MessagesPage() {
           <p className="text-xs text-[#9EA4AF] mt-1">Direct conversations &amp; active live chat sessions</p>
         </div>
 
-        {activeRoomId && (
+        {isRandomActive && (
           <Button
             onClick={handleResumeActiveChat}
             variant="primary"
@@ -85,7 +85,7 @@ export default function MessagesPage() {
       </div>
 
       {/* Active Live Chat Banner if in progress */}
-      {activeRoomId && (
+      {isRandomActive && (
         <Card className="p-6 bg-[#14181F] border-white/[0.08] shadow-menu">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
