@@ -32,6 +32,46 @@ export default function MessagesPage() {
       }
     };
     fetchFriendsForMessages();
+
+    // Listen to global notifications for realtime new_message updates while on this page
+    let ws = null;
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      // WS_BASE_URL logic
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = import.meta.env.VITE_API_BASE_URL 
+        ? import.meta.env.VITE_API_BASE_URL.replace(/^https?:\/\//, '')
+        : window.location.host;
+      const WS_BASE = `${protocol}//${host}`;
+      
+      ws = new WebSocket(`${WS_BASE}/ws/notifications/?token=${token}`);
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'notification' && data.data?.type === 'new_message') {
+          const senderId = data.data.sender_id;
+          const content = data.data.content;
+          
+          setFriends(prev => prev.map(f => {
+            if (f.friend.id === senderId) {
+              return {
+                ...f,
+                unread_count: (f.unread_count || 0) + 1,
+                last_message: {
+                  content: content,
+                  created_at: data.data.created_at,
+                  sender_id: senderId
+                }
+              };
+            }
+            return f;
+          }));
+        }
+      };
+    }
+
+    return () => {
+      if (ws) ws.close();
+    };
   }, []);
 
   const handleStartFriendChat = async (friendId) => {
@@ -156,8 +196,15 @@ export default function MessagesPage() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <Avatar name={name} size="md" online={isOnline} />
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-white text-sm truncate">{name}</h3>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-semibold text-white text-sm truncate">{name}</h3>
+                          {item.unread_count > 0 && (
+                            <Badge tone="danger" className="ml-2 flex-shrink-0 animate-pulse">
+                              <span>{item.unread_count}</span>
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <Circle
                             className={`w-2 h-2 ${isOnline ? 'text-[#7BAA82] fill-[#7BAA82]' : 'text-[#9EA4AF]/40 fill-[#9EA4AF]/40'}`}
@@ -166,6 +213,11 @@ export default function MessagesPage() {
                             {isOnline ? 'Available' : 'Offline'}
                           </span>
                         </div>
+                        {item.last_message && (
+                          <p className="text-xs text-[#9EA4AF] mt-2 line-clamp-1 break-words">
+                            {item.last_message.sender_id === user?.id ? 'You: ' : ''}{item.last_message.content}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

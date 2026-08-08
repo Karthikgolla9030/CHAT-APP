@@ -74,3 +74,5 @@ class TypingStatus(models.Model):
     class Meta:
         db_table = 'typing_statuses'
         unique_together = ('room', 'user')
+
+import chat.signals
