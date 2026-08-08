@@ -182,55 +182,70 @@ export default function MessagesPage() {
             </div>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="flex flex-col gap-3">
             {friends.map((item) => {
               const name = item.friend.profile?.display_name || item.friend.username;
               const isOnline = item.friend.profile?.online_status === 'online';
+              
+              const formatTime = (isoString) => {
+                if (!isoString) return '';
+                const date = new Date(isoString);
+                const now = new Date();
+                const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+                if (date.toDateString() === now.toDateString()) {
+                  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } else if (diffDays === 1 || (diffDays === 0 && date.getDate() !== now.getDate())) {
+                  return 'Yesterday';
+                } else if (diffDays < 7) {
+                  return date.toLocaleDateString([], { weekday: 'short' });
+                } else {
+                  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                }
+              };
 
               return (
                 <Card
                   key={item.id}
                   hover
-                  className="p-5 bg-[#14181F] border-white/[0.05] flex flex-col justify-between space-y-4"
+                  onClick={() => handleStartFriendChat(item.friend.id)}
+                  className="p-4 bg-[#14181F] border-white/[0.05] cursor-pointer w-full transition-colors hover:bg-white/[0.02]"
                 >
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={name} size="md" online={isOnline} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex justify-between items-start">
-                          <h3 className="font-semibold text-white text-sm truncate">{name}</h3>
-                          {item.unread_count > 0 && (
-                            <Badge tone="danger" className="ml-2 flex-shrink-0 animate-pulse">
-                              <span>{item.unread_count}</span>
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <Circle
-                            className={`w-2 h-2 ${isOnline ? 'text-[#7BAA82] fill-[#7BAA82]' : 'text-[#9EA4AF]/40 fill-[#9EA4AF]/40'}`}
-                          />
-                          <span className="text-[11px] text-[#9EA4AF]">
-                            {isOnline ? 'Available' : 'Offline'}
+                  <div className="flex items-center gap-4 w-full">
+                    {/* Avatar without the inner online dot */}
+                    <Avatar name={name} size="lg" />
+                    
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex justify-between items-center mb-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <h3 className="font-semibold text-white text-base truncate">{name}</h3>
+                          <span className={`text-xs font-medium ${isOnline ? 'text-[#7BAA82]' : 'text-[#9EA4AF]'}`}>
+                            {isOnline ? '🟢 Online' : '⚪ Offline'}
                           </span>
                         </div>
                         {item.last_message && (
-                          <p className="text-xs text-[#9EA4AF] mt-2 line-clamp-1 break-words">
-                            {item.last_message.sender_id === user?.id ? 'You: ' : ''}{item.last_message.content}
-                          </p>
+                          <span className="text-xs text-[#9EA4AF] flex-shrink-0 ml-3">
+                            {formatTime(item.last_message.created_at)}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="flex justify-between items-center gap-4">
+                        <p className="text-sm text-[#9EA4AF] truncate">
+                          {item.last_message ? (
+                            <>{item.last_message.sender_id === user?.id ? 'You: ' : ''}{item.last_message.content}</>
+                          ) : (
+                            <span className="italic opacity-50">No messages yet</span>
+                          )}
+                        </p>
+                        
+                        {item.unread_count > 0 && (
+                          <div className="bg-[#D97FA6] text-white text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 min-w-[20px] text-center">
+                            {item.unread_count > 99 ? '99+' : item.unread_count}
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
-
-                  <Button
-                    onClick={() => handleStartFriendChat(item.friend.id)}
-                    variant="secondary"
-                    size="sm"
-                    className="w-full justify-center gap-1.5"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 text-[#A66BFF]" />
-                    <span>Open Messages</span>
-                  </Button>
                 </Card>
               );
             })}
