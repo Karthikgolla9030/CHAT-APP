@@ -109,18 +109,16 @@ if REDIS_URL:
             'CONFIG': {
                 'hosts': [{
                     'address': REDIS_URL,
-                }],
-                'capacity': 1500,
-                'expiry': 60,
-                'symmetric_encryption_keys': [SECRET_KEY],
-                'group_expiry': 86400,
-                'redis_client_kwargs': {
                     'socket_keepalive': True,
                     'socket_connect_timeout': 5,
                     'socket_timeout': 60,
                     'health_check_interval': 30,
                     'max_connections': 250,
-                }
+                }],
+                'capacity': 1500,
+                'expiry': 60,
+                'symmetric_encryption_keys': [SECRET_KEY],
+                'group_expiry': 86400,
             },
         },
     }
