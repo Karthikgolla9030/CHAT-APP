@@ -23,6 +23,7 @@ def notify_new_message(sender, instance, created, **kwargs):
             'type': 'send_notification',
             'data': {
                 'type': 'new_message',
+                'message_id': str(instance.id),
                 'sender_id': instance.sender_id,
                 'room_id': str(instance.room.id),
                 'content': instance.content,

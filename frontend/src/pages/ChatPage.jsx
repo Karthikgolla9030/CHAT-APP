@@ -679,6 +679,8 @@ export default function ChatPage() {
                     {isMe &&
                       (msg.status === 'seen' ? (
                         <CheckCheck className="w-3 h-3 text-[#7BAA82]" />
+                      ) : msg.status === 'delivered' ? (
+                        <CheckCheck className="w-3 h-3 text-[#9EA4AF]" />
                       ) : (
                         <Check className="w-3 h-3 text-[#9EA4AF]" />
                       ))}

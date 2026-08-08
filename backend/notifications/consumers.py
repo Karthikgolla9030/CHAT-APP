@@ -21,3 +21,32 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 
     async def match_notification(self, event):
         await self.send_json(event['data'])
+
+    async def receive_json(self, content):
+        msg_type = content.get('type')
+        if msg_type == 'mark_delivered':
+            message_id = content.get('message_id')
+            room_id = content.get('room_id')
+            if message_id and room_id:
+                from chat.models import Message
+                from channels.db import database_sync_to_async
+                
+                @database_sync_to_async
+                def update_delivered():
+                    updated = Message.objects.filter(
+                        id=message_id, 
+                        status='sent'
+                    ).exclude(sender=self.user).update(status='delivered')
+                    return updated > 0
+                
+                success = await update_delivered()
+                if success:
+                    # Broadcast back to the chat room so the sender sees ✓✓
+                    await self.channel_layer.group_send(
+                        f"chat_{room_id}",
+                        {
+                            'type': 'broadcast_delivered',
+                            'message_id': message_id,
+                            'user_id': self.user.id
+                        }
+                    )

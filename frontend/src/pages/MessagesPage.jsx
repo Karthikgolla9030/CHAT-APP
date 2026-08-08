@@ -50,6 +50,16 @@ export default function MessagesPage() {
         if (data.type === 'notification' && data.data?.type === 'new_message') {
           const senderId = data.data.sender_id;
           const content = data.data.content;
+          const messageId = data.data.message_id;
+          const roomId = data.data.room_id;
+          
+          if (ws.readyState === WebSocket.OPEN && messageId && roomId) {
+            ws.send(JSON.stringify({
+              type: 'mark_delivered',
+              message_id: messageId,
+              room_id: roomId
+            }));
+          }
           
           setFriends(prev => prev.map(f => {
             if (f.friend.id === senderId) {

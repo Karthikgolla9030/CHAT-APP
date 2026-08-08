@@ -48,6 +48,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group, self.channel_name)
         await self.accept()
 
+        await self.channel_layer.group_send(
+            self.room_group,
+            {
+                'type': 'broadcast_partner_reconnected',
+                'reconnected_user_id': self.user.id
+            }
+        )
+
         # Handle potential reconnection within 30s grace period
         await database_sync_to_async(SessionService.handle_reconnect)(self.room_id_str, self.user.id)
 
@@ -63,6 +71,16 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         
         if hasattr(self, 'room_group'):
             logger.info(f"[GROUP_DISCARD] Timestamp: {time.time():.3f} | User ID: {getattr(self.user, 'id', 'unknown')} | Channel Name: {self.channel_name} | Group Name: {self.room_group} | Room ID: {getattr(self, 'room_id_str', 'unknown')} | Event Type: disconnect")
+            
+            await self.channel_layer.group_send(
+                self.room_group,
+                {
+                    'type': 'broadcast_partner_disconnected',
+                    'disconnected_user_id': self.user.id,
+                    'grace_period_seconds': 0
+                }
+            )
+            
             await self.channel_layer.group_discard(self.room_group, self.channel_name)
 
         if not self.explicit_disconnect and hasattr(self, 'room_id_str') and hasattr(self, 'user') and self.user.id:
@@ -158,6 +176,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def broadcast_seen(self, event):
         await self.send_json({'type': 'mark_seen', 'message_id': event['message_id'], 'user_id': event['user_id']})
+
+    async def broadcast_delivered(self, event):
+        await self.send_json({'type': 'mark_delivered', 'message_id': event['message_id'], 'user_id': event['user_id']})
 
     async def broadcast_all_seen(self, event):
         await self.send_json({'type': 'mark_all_seen', 'user_id': event['user_id']})

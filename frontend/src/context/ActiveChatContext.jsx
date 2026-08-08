@@ -472,6 +472,10 @@ export const ActiveChatProvider = ({ children }) => {
           setFriendMessages((prev) =>
             prev.map((msg) => (msg.id === data.message_id ? { ...msg, status: 'seen' } : msg))
           );
+        } else if (data.type === 'mark_delivered') {
+          setFriendMessages((prev) =>
+            prev.map((msg) => (msg.id === data.message_id && msg.status !== 'seen' ? { ...msg, status: 'delivered' } : msg))
+          );
         } else if (data.type === 'mark_all_seen') {
           setFriendMessages((prev) =>
             prev.map((msg) => (msg.sender_id !== data.user_id ? { ...msg, status: 'seen' } : msg))
