@@ -36,7 +36,7 @@ class ChatService:
     @staticmethod
     def update_all_messages_seen(room, user):
         """Mark all unread messages as seen by recipient user."""
-        updated = Message.objects.filter(room=room, status='sent').exclude(sender=user).update(status='seen')
+        updated = Message.objects.filter(room=room, status__in=['sent', 'delivered']).exclude(sender=user).update(status='seen')
         return updated > 0
 
     @staticmethod

@@ -39,7 +39,7 @@ class FriendshipSerializer(serializers.ModelSerializer):
                 models.Q(user1=request_user, user2=friend_user) | models.Q(user1=friend_user, user2=request_user),
                 room_type='friend'
             )
-            return Message.objects.filter(room=room, status='sent', sender=friend_user).count()
+            return Message.objects.filter(room=room, status__in=['sent', 'delivered'], sender=friend_user).count()
         except ChatRoom.DoesNotExist:
             return 0
 
