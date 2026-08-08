@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WS_BASE_URL } from '../utils/constants';
 import api from '../services/api';
+import { useAuth } from './AuthContext';
 
 const ActiveChatContext = createContext(null);
 
@@ -9,6 +10,70 @@ export const useActiveChat = () => useContext(ActiveChatContext);
 
 export const ActiveChatProvider = ({ children }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // ─── Global Unread State ─────────────────────────────────────────────
+  const [globalUnreadRooms, setGlobalUnreadRooms] = useState(new Set());
+  
+  useEffect(() => {
+    if (user && user.unread_rooms) {
+      setGlobalUnreadRooms(new Set(user.unread_rooms));
+    }
+  }, [user]);
+
+  // ─── Global Notifications Websocket ───────────────────────────────────
+  const notificationsWsRef = useRef(null);
+  
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+    
+    const socketUrl = import.meta.env.PROD
+      ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/notifications/?token=${token}`
+      : `${WS_BASE_URL}/notifications/?token=${token}`;
+      
+    const ws = new WebSocket(socketUrl);
+    notificationsWsRef.current = ws;
+    
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      
+      // Update global unread badge if new message arrives
+      if (data.type === 'notification' && data.data?.type === 'new_message') {
+        const roomId = data.data.room_id;
+        const messageId = data.data.message_id;
+        
+        if (roomId) {
+          setGlobalUnreadRooms(prev => {
+            const newSet = new Set(prev);
+            newSet.add(roomId);
+            return newSet;
+          });
+        }
+        
+        // Auto-ack delivery globally
+        if (ws.readyState === WebSocket.OPEN && messageId && roomId) {
+          ws.send(JSON.stringify({
+            type: 'mark_delivered',
+            message_id: messageId,
+            room_id: roomId
+          }));
+        }
+      }
+      
+      // Forward to MessagesPage if it set a setter
+      if (window.__messageStateSetters && window.__messageStateSetters.handleNotification) {
+        window.__messageStateSetters.handleNotification(data);
+      }
+    };
+    
+    return () => {
+      if (notificationsWsRef.current) {
+        notificationsWsRef.current.close();
+        notificationsWsRef.current = null;
+      }
+    };
+  }, [user]);
 
   // ─── Random chat session state ──────────────────────────────────────
   const [hasActiveRedisSession, setHasActiveRedisSession] = useState(false);
@@ -28,6 +93,17 @@ export const ActiveChatProvider = ({ children }) => {
   const [friendPartnerTyping, setFriendPartnerTyping] = useState(false);
   const [friendChatEnded, setFriendChatEnded] = useState(false);
   const friendWsRef = useRef(null);
+
+  useEffect(() => {
+    if (friendRoomId) {
+      setGlobalUnreadRooms(prev => {
+        if (!prev.has(friendRoomId)) return prev;
+        const newSet = new Set(prev);
+        newSet.delete(friendRoomId);
+        return newSet;
+      });
+    }
+  }, [friendRoomId]);
 
   // ─── Matchmaking session state ───────────────────────────────────────
   const [isSearching, setIsSearching] = useState(false);
@@ -542,6 +618,7 @@ export const ActiveChatProvider = ({ children }) => {
         handleNextMatch,
 
         handleLogoutClear,
+        globalUnreadCount: globalUnreadRooms.size,
       }}
     >
       {children}

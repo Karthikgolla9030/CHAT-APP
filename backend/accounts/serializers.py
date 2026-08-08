@@ -27,10 +27,19 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
+    unread_rooms = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'is_guest', 'created_at', 'profile']
+        fields = ['id', 'username', 'email', 'is_guest', 'created_at', 'profile', 'unread_rooms']
+
+    def get_unread_rooms(self, obj):
+        from chat.models import Message
+        unread_room_ids = Message.objects.filter(
+            room__room_type='friend',
+            status__in=['sent', 'delivered']
+        ).exclude(sender=obj).values_list('room_id', flat=True).distinct()
+        return [str(room_id) for room_id in unread_room_ids]
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)

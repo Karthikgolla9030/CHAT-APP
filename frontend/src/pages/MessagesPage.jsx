@@ -33,33 +33,12 @@ export default function MessagesPage() {
     };
     fetchFriendsForMessages();
 
-    // Listen to global notifications for realtime new_message updates while on this page
-    let ws = null;
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      // WS_BASE_URL logic
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = import.meta.env.VITE_API_BASE_URL 
-        ? import.meta.env.VITE_API_BASE_URL.replace(/^https?:\/\//, '')
-        : window.location.host;
-      const WS_BASE = `${protocol}//${host}`;
-      
-      ws = new WebSocket(`${WS_BASE}/ws/notifications/?token=${token}`);
-      ws.onmessage = (e) => {
-        const data = JSON.parse(e.data);
+    // Register for global realtime notifications
+    window.__messageStateSetters = {
+      handleNotification: (data) => {
         if (data.type === 'notification' && data.data?.type === 'new_message') {
           const senderId = data.data.sender_id;
           const content = data.data.content;
-          const messageId = data.data.message_id;
-          const roomId = data.data.room_id;
-          
-          if (ws.readyState === WebSocket.OPEN && messageId && roomId) {
-            ws.send(JSON.stringify({
-              type: 'mark_delivered',
-              message_id: messageId,
-              room_id: roomId
-            }));
-          }
           
           setFriends(prev => prev.map(f => {
             if (f.friend.id === senderId) {
@@ -76,11 +55,11 @@ export default function MessagesPage() {
             return f;
           }));
         }
-      };
-    }
+      }
+    };
 
     return () => {
-      if (ws) ws.close();
+      window.__messageStateSetters = null;
     };
   }, []);
 

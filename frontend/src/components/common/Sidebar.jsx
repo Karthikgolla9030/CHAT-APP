@@ -14,7 +14,7 @@ import { Logo } from '../ui';
 
 export function Sidebar({ mobileOpen, setMobileOpen }) {
   const { user, logout } = useAuth();
-  const { handleLogoutClear, randomRoomId, friendRoomId } = useActiveChat();
+  const { handleLogoutClear, randomRoomId, friendRoomId, globalUnreadCount } = useActiveChat();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -37,7 +37,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
       label: 'Messages',
       path: '/messages',
       icon: MessageSquare,
-      badge: activeRoomId ? '1' : null,
+      badge: globalUnreadCount > 0 ? globalUnreadCount.toString() : null,
     },
     {
       label: 'Settings',
