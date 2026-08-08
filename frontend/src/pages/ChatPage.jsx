@@ -591,9 +591,9 @@ export default function ChatPage() {
             {chatType === 'friend' && (
               <button
                 type="button"
-                onClick={() => navigate('/friends')}
+                onClick={() => navigate('/messages')}
                 className="p-1.5 rounded-lg hover:bg-[#1A1F28] text-[#9EA4AF] hover:text-white transition-colors cursor-pointer"
-                title="Back to Friends"
+                title="Back to Messages"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
