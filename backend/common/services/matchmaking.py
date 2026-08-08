@@ -123,8 +123,6 @@ class MatchmakingService:
         """
         redis_c = get_redis_client()
         user_id = user.id
-
-        # Register self in queue first
         my_payload = MatchmakingService.join_queue(user, filters)
 
         # Acquire atomic Redis lock
@@ -145,7 +143,6 @@ class MatchmakingService:
             blocked_ids = set(BlockedUser.objects.filter(blocker_id=user_id).values_list('blocked_id', flat=True)) | \
                           set(BlockedUser.objects.filter(blocked_id=user_id).values_list('blocker_id', flat=True))
 
-            scored_candidates = []
             my_interests_list = filters.get('interests') or list(UserInterest.objects.filter(user=user).values_list('interest__name', flat=True))
             my_interests_set = set(x.lower() for x in my_interests_list)
 
@@ -155,10 +152,17 @@ class MatchmakingService:
                 my_entered_at = time.time()
             elapsed = time.time() - my_entered_at
 
-            for cand_obj in candidates_qs:
-                candidate_user = cand_obj.user
-                candidate_id = candidate_user.id
+            # Evaluate all available candidates
+            best_partner = None
+            best_score = -1.0
+            best_common = []
+            
+            scored_candidates = []
+            for candidate in candidates_qs:
+                candidate_id = candidate.user_id
+                candidate_user = candidate.user
 
+                # Do not match if blocked
                 if candidate_id in blocked_ids:
                     continue
 
@@ -166,16 +170,24 @@ class MatchmakingService:
                 if SessionService.get_user_active_room_id(candidate_id):
                     continue
 
+                # Fetch candidate's matching payload
+                cand_data = redis_c.hgetall(f"queue_entry:{candidate_id}")
+                if not cand_data:
+                    # Stale DB entry, payload expired from Redis
+                    MatchQueue.objects.filter(user_id=candidate_id).update(is_active=False)
+                    continue
+
                 # Requirement 8: Check encounter limit (max 3 times unless friends)
                 u1, u2 = (user_id, candidate_id) if user_id < candidate_id else (candidate_id, user_id)
                 encounter_count = MatchHistory.objects.filter(user1_id=u1, user2_id=u2).count()
-                if encounter_count >= MAX_MATCH_ENCOUNTERS:
+                
+                from django.conf import settings
+                if encounter_count >= MAX_MATCH_ENCOUNTERS and not getattr(settings, 'DEBUG', False):
                     is_friend = Friendship.objects.filter(user1_id=u1, user2_id=u2).exists()
                     if not is_friend:
                         logger.info(f"Skipping candidate {candidate_id} for user {user_id} — encounter count {encounter_count} >= {MAX_MATCH_ENCOUNTERS}")
                         continue
 
-                # Load candidate payload from Redis or fallback to object attributes
                 cand_data = redis_c.hgetall(f"queue_entry:{candidate_id}")
                 if not cand_data:
                     cand_profile = getattr(candidate_user, 'profile', None)
