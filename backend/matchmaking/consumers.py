@@ -35,8 +35,11 @@ class MatchmakingConsumer(AsyncJsonWebsocketConsumer):
 
             if partner and room:
                 room_id_str = str(room.id)
-                partner_profile = getattr(partner, 'profile', None)
-                user_profile = getattr(self.user, 'profile', None)
+                
+                # Fetch profiles safely in async context to prevent SynchronousOnlyOperation
+                partner_profile, user_profile = await database_sync_to_async(
+                    lambda: (getattr(partner, 'profile', None), getattr(self.user, 'profile', None))
+                )()
 
                 match_data_me = {
                     'type': 'match_found',
