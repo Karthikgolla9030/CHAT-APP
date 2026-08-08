@@ -126,6 +126,16 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         'user_id': self.user.id
                     }
                 )
+                
+        elif msg_type == 'mark_all_seen':
+            await database_sync_to_async(ChatService.update_all_messages_seen)(self.room, self.user)
+            await self.channel_layer.group_send(
+                self.room_group,
+                {
+                    'type': 'broadcast_all_seen',
+                    'user_id': self.user.id
+                }
+            )
 
         elif msg_type == 'skip_chat':
             logger.info(f"[FLOW_TRACE_SKIP] Frontend click -> receive_json | Socket: {self.socket_id} | Timestamp: {time.time():.3f}")
@@ -148,6 +158,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def broadcast_seen(self, event):
         await self.send_json({'type': 'mark_seen', 'message_id': event['message_id'], 'user_id': event['user_id']})
+
+    async def broadcast_all_seen(self, event):
+        await self.send_json({'type': 'mark_all_seen', 'user_id': event['user_id']})
 
     async def broadcast_chat_ended(self, event):
         logger.info(f"[FLOW_TRACE_SKIP] broadcast_chat_ended -> send_json | Socket: {self.socket_id} | Timestamp: {time.time():.3f}")

@@ -34,6 +34,12 @@ class ChatService:
         return updated > 0
 
     @staticmethod
+    def update_all_messages_seen(room, user):
+        """Mark all unread messages as seen by recipient user."""
+        updated = Message.objects.filter(room=room, status='sent').exclude(sender=user).update(status='seen')
+        return updated > 0
+
+    @staticmethod
     def set_typing_status(room_id_str, user_id, is_typing):
         """Set user typing status in Redis with 3s TTL."""
         redis_c = get_redis_client()

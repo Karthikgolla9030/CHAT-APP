@@ -449,6 +449,7 @@ export const ActiveChatProvider = ({ children }) => {
 
     ws.onopen = () => {
       console.log(`[FRONTEND_WS_ONOPEN] Socket ID: ${ws._socketId} | Room ID: ${roomId} | Timestamp: ${performance.now().toFixed(2)}ms`);
+      ws.send(JSON.stringify({ type: 'mark_all_seen' }));
     };
 
     ws.onmessage = (event) => {
@@ -470,6 +471,10 @@ export const ActiveChatProvider = ({ children }) => {
         } else if (data.type === 'mark_seen') {
           setFriendMessages((prev) =>
             prev.map((msg) => (msg.id === data.message_id ? { ...msg, status: 'seen' } : msg))
+          );
+        } else if (data.type === 'mark_all_seen') {
+          setFriendMessages((prev) =>
+            prev.map((msg) => (msg.sender_id !== data.user_id ? { ...msg, status: 'seen' } : msg))
           );
         } else if (data.type === 'chat_ended') {
           setFriendChatEnded(true);
