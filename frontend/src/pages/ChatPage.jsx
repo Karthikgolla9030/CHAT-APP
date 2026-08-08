@@ -598,13 +598,25 @@ export default function ChatPage() {
                 <ArrowLeft className="w-4 h-4" />
               </button>
             )}
-            <Avatar name={partnerName} size="md" online />
+            {/* Avatar WITHOUT online prop inside the chat screen */}
+            <Avatar name={partnerName} size="md" />
             <div className="min-w-0">
               <h2 className="font-semibold text-white text-sm truncate">{partnerName}</h2>
               <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#7BAA82]" />
                 <span className="text-[11px] text-[#9EA4AF]">
-                  {chatType === 'friend' ? 'Direct Message' : 'Live Match Room'}
+                  {chatType === 'friend' ? (
+                    isPartnerTyping ? (
+                      <span className="text-[#A66BFF] italic">Typing...</span>
+                    ) : partnerDisconnected ? (
+                      'Offline'
+                    ) : partnerInfo?.online_status === 'online' ? (
+                      'Online'
+                    ) : (
+                      'Offline'
+                    )
+                  ) : (
+                    'Live Match Room'
+                  )}
                 </span>
               </div>
             </div>

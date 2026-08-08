@@ -92,6 +92,7 @@ class RoomDetailView(APIView):
                 'username': partner.username,
                 'display_name': getattr(getattr(partner, 'profile', None), 'display_name', partner.username),
                 'avatar': partner.profile.avatar.url if getattr(getattr(partner, 'profile', None), 'avatar', None) else None,
+                'online_status': getattr(getattr(partner, 'profile', None), 'online_status', 'offline'),
             }
         })
 

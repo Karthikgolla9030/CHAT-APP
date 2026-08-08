@@ -211,16 +211,14 @@ export default function MessagesPage() {
                   className="p-4 bg-[#14181F] border-white/[0.05] cursor-pointer w-full transition-colors hover:bg-white/[0.02]"
                 >
                   <div className="flex items-center gap-4 w-full">
-                    {/* Avatar without the inner online dot */}
-                    <Avatar name={name} size="lg" />
+                    {/* Only pass online prop if they are explicitly 'online' */}
+                    <Avatar name={name} size="lg" online={isOnline ? true : undefined} />
                     
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex justify-between items-center mb-1">
                         <div className="flex items-center gap-2 min-w-0">
                           <h3 className="font-semibold text-white text-base truncate">{name}</h3>
-                          <span className={`text-xs font-medium ${isOnline ? 'text-[#7BAA82]' : 'text-[#9EA4AF]'}`}>
-                            {isOnline ? '🟢 Online' : '⚪ Offline'}
-                          </span>
+                          {/* Removed the '🟢 Online / ⚪ Offline' text as requested */}
                         </div>
                         {item.last_message && (
                           <span className="text-xs text-[#9EA4AF] flex-shrink-0 ml-3">
