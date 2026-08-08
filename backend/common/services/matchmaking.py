@@ -69,10 +69,10 @@ class MatchmakingService:
         score = 0.5
 
         # 1. Gender / Looking For hard check
-        p1_g = user1_data.get('gender')
-        p1_lf = user1_data.get('looking_for')
-        p2_g = user2_data.get('gender')
-        p2_lf = user2_data.get('looking_for')
+        p1_g = str(user1_data.get('gender') or '').lower()
+        p1_lf = str(user1_data.get('looking_for') or '').lower()
+        p2_g = str(user2_data.get('gender') or '').lower()
+        p2_lf = str(user2_data.get('looking_for') or '').lower()
 
         if p1_lf and p1_lf != 'anyone' and p1_lf != p2_g:
             return 0.0
@@ -82,13 +82,15 @@ class MatchmakingService:
         # 2. Interest Overlap (Primary)
         try:
             raw1 = user1_data.get('interests', '[]')
-            ints1 = set(json.loads(raw1) if isinstance(raw1, str) else raw1)
+            list1 = json.loads(raw1) if isinstance(raw1, str) else raw1
+            ints1 = {str(x).strip().lower() for x in list1} if list1 else set()
         except Exception:
             ints1 = set()
 
         try:
             raw2 = user2_data.get('interests', '[]')
-            ints2 = set(json.loads(raw2) if isinstance(raw2, str) else raw2)
+            list2 = json.loads(raw2) if isinstance(raw2, str) else raw2
+            ints2 = {str(x).strip().lower() for x in list2} if list2 else set()
         except Exception:
             ints2 = set()
 
@@ -188,10 +190,11 @@ class MatchmakingService:
                         logger.info(f"Skipping candidate {candidate_id} for user {user_id} — encounter count {encounter_count} >= {MAX_MATCH_ENCOUNTERS}")
                         continue
 
-                cand_data = redis_c.hgetall(f"queue_entry:{candidate_id}")
+                # Load candidate payload from Redis
+                # (Already fetched above, but keeping structure safe)
                 if not cand_data:
                     cand_profile = getattr(candidate_user, 'profile', None)
-                    cand_prefs = cand_obj.preferences or {}
+                    cand_prefs = candidate.preferences or {}
                     cand_data = {
                         'user_id': str(candidate_id),
                         'username': candidate_user.username,
