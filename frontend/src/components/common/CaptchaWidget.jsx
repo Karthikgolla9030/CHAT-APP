@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import { Shield, ShieldCheck, RefreshCw, AlertCircle, ArrowRight, Check } from 'lucide-react';
 import { Card, Button } from '../ui';
@@ -28,6 +29,7 @@ export const CaptchaModal = ({ isOpen, onSuccess, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!answer.trim() || !challenge) return;
 
     setLoading(true);
@@ -56,7 +58,7 @@ export const CaptchaModal = ({ isOpen, onSuccess, onClose }) => {
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
       <Card className="w-full max-w-sm p-6 bg-[#14181F] border-white/[0.08] shadow-menu space-y-5 text-center">
         <div className="w-14 h-14 rounded-2xl bg-[#101319] border border-white/10 flex items-center justify-center mx-auto text-[#A66BFF]">
@@ -126,7 +128,8 @@ export const CaptchaModal = ({ isOpen, onSuccess, onClose }) => {
           </div>
         </form>
       </Card>
-    </div>
+    </div>,
+    document.body
   );
 };
 
